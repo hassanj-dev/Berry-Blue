@@ -1,33 +1,41 @@
+import { gameSchema } from "@berryblue/shared";
+import { env } from "@/lib/env";
 import { siteConfig } from "@/lib/site";
+
+const sample = {
+  id: "5b0f3c1e-8a52-4f0e-9d51-1c2b7a3e4f10",
+  slug: "test-game",
+  title: "Test Game",
+  thumbnailUrl: "https://example.com/thumb.png",
+  embedUrl: "https://example.com/play",
+  categorySlug: "puzzle",
+  devices: ["mobile", "desktop"],
+  provider: "self-hosted",
+  createdAt: "2026-11-18T00:00:00Z",
+};
+
+const good = gameSchema.safeParse(sample);
+const bad = gameSchema.safeParse({ ...sample, slug: "Bad Slug!", devices: [] });
 
 export default function Home() {
   return (
     <main className="mx-auto max-w-5xl p-4 md:p-8">
-      <h1 className="text-2xl font-bold text-brand md:text-4xl">
-        {siteConfig.name}
-      </h1>
-      <p className="mt-2 text-muted">Design tokens test page</p>
+      <h1 className="text-2xl font-bold text-brand md:text-4xl">{siteConfig.name}</h1>
+      <p className="mt-2 text-muted">Shared schema and env test</p>
 
-      <div className="mt-6 flex flex-wrap gap-3">
-        <button className="rounded-xl bg-brand px-4 py-2 font-semibold text-brand-foreground">
-          Play
-        </button>
-        <button className="rounded-xl border border-border bg-surface px-4 py-2 font-semibold">
-          Details
-        </button>
-      </div>
+      <p className="mt-4">Good game: {good.success ? "valid" : "invalid"}</p>
+      <p>Bad game: {bad.success ? "valid" : "invalid"}</p>
+      {!bad.success && (
+        <ul className="mt-2 list-disc pl-6 text-sm text-muted">
+          {bad.error.issues.map((issue, i) => (
+            <li key={i}>
+              {issue.path.join(".")}: {issue.message}
+            </li>
+          ))}
+        </ul>
+      )}
 
-      <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div
-            key={i}
-            className="rounded-2xl border border-border bg-surface p-3"
-          >
-            <div className="aspect-square rounded-xl bg-accent/20" />
-            <p className="mt-2 text-sm font-semibold">Game {i + 1}</p>
-          </div>
-        ))}
-      </div>
+      <p className="mt-4">Supabase host: {new URL(env.NEXT_PUBLIC_SUPABASE_URL).host}</p>
     </main>
   );
 }

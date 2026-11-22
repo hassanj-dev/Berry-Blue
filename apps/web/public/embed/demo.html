@@ -1,64 +1,128 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Demo game</title>
-<style>
-  [hidden] { display: none !important; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #1e1b4b; color: #fff;
-    font-family: system-ui, sans-serif; touch-action: manipulation; }
-  #hud { position: absolute; top: 8px; left: 0; right: 0; display: flex; justify-content: space-between;
-    padding: 0 16px; font-weight: 700; }
-  #target { position: absolute; width: 56px; height: 56px; border: 0; border-radius: 50%;
-    background: #facc15; box-shadow: 0 0 0 6px rgba(250, 204, 21, 0.3); cursor: pointer; }
-  #msg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 12px; background: rgba(30, 27, 75, 0.94); text-align: center; }
-  #start { padding: 12px 28px; border: 0; border-radius: 999px; background: #facc15; color: #1e1b4b;
-    font-size: 18px; font-weight: 700; cursor: pointer; }
-</style>
-</head>
-<body>
-  <div id="hud"><span>Score: <span id="score">0</span></span><span>Time: <span id="time">20</span></span></div>
-  <button id="target" type="button" aria-label="Tap the target" hidden></button>
-  <div id="msg">
-    <h1 id="title" style="margin:0;font-size:24px">Tap the target!</h1>
-    <p style="margin:0;opacity:.8">Hit as many as you can in 20 seconds.</p>
-    <button id="start" type="button">Start</button>
-  </div>
-<script>
-(function () {
-  var DURATION = 20, score = 0, left = DURATION, timer = null;
-  var target = document.getElementById("target");
-  var scoreEl = document.getElementById("score");
-  var timeEl = document.getElementById("time");
-  var msg = document.getElementById("msg");
-  var title = document.getElementById("title");
-  var startBtn = document.getElementById("start");
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Demo game</title>
+    <style>
+      [hidden] {
+        display: none !important;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #1e1b4b;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+        touch-action: manipulation;
+      }
+      #hud {
+        position: absolute;
+        top: 8px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        padding: 0 16px;
+        font-weight: 700;
+      }
+      #target {
+        position: absolute;
+        width: 56px;
+        height: 56px;
+        border: 0;
+        border-radius: 50%;
+        background: #facc15;
+        box-shadow: 0 0 0 6px rgba(250, 204, 21, 0.3);
+        cursor: pointer;
+      }
+      #msg {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: rgba(30, 27, 75, 0.94);
+        text-align: center;
+      }
+      #start {
+        padding: 12px 28px;
+        border: 0;
+        border-radius: 999px;
+        background: #facc15;
+        color: #1e1b4b;
+        font-size: 18px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hud">
+      <span>Score: <span id="score">0</span></span
+      ><span>Time: <span id="time">20</span></span>
+    </div>
+    <button id="target" type="button" aria-label="Tap the target" hidden></button>
+    <div id="msg">
+      <h1 id="title" style="margin: 0; font-size: 24px">Tap the target!</h1>
+      <p style="margin: 0; opacity: 0.8">Hit as many as you can in 20 seconds.</p>
+      <button id="start" type="button">Start</button>
+    </div>
+    <script>
+      (function () {
+        var DURATION = 20,
+          score = 0,
+          left = DURATION,
+          timer = null;
+        var target = document.getElementById("target");
+        var scoreEl = document.getElementById("score");
+        var timeEl = document.getElementById("time");
+        var msg = document.getElementById("msg");
+        var title = document.getElementById("title");
+        var startBtn = document.getElementById("start");
 
-  function update() { scoreEl.textContent = score; timeEl.textContent = left; }
-  function move() {
-    target.style.left = Math.random() * (window.innerWidth - 56) + "px";
-    target.style.top = 40 + Math.random() * (window.innerHeight - 56 - 40) + "px";
-  }
-  function end() {
-    clearInterval(timer);
-    target.hidden = true;
-    msg.hidden = false;
-    title.textContent = "Time up! Score: " + score;
-    startBtn.textContent = "Play again";
-  }
-  function tick() { left--; update(); if (left <= 0) end(); }
-  function start() {
-    score = 0; left = DURATION; update();
-    msg.hidden = true; target.hidden = false; move();
-    clearInterval(timer);
-    timer = setInterval(tick, 1000);
-  }
+        function update() {
+          scoreEl.textContent = score;
+          timeEl.textContent = left;
+        }
+        function move() {
+          target.style.left = Math.random() * (window.innerWidth - 56) + "px";
+          target.style.top = 40 + Math.random() * (window.innerHeight - 56 - 40) + "px";
+        }
+        function end() {
+          clearInterval(timer);
+          target.hidden = true;
+          msg.hidden = false;
+          title.textContent = "Time up! Score: " + score;
+          startBtn.textContent = "Play again";
+        }
+        function tick() {
+          left--;
+          update();
+          if (left <= 0) end();
+        }
+        function start() {
+          score = 0;
+          left = DURATION;
+          update();
+          msg.hidden = true;
+          target.hidden = false;
+          move();
+          clearInterval(timer);
+          timer = setInterval(tick, 1000);
+        }
 
-  target.addEventListener("click", function () { score++; update(); move(); });
-  startBtn.addEventListener("click", start);
-})();
-</script>
-</body>
+        target.addEventListener("click", function () {
+          score++;
+          update();
+          move();
+        });
+        startBtn.addEventListener("click", start);
+      })();
+    </script>
+  </body>
 </html>

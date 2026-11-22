@@ -48,7 +48,11 @@ async function GameContent({ params }: { params: Params }) {
           &larr; {t("game.backToGames")}
         </Link>
         <h1 className="mt-2 text-2xl font-bold md:text-4xl">{game.title}</h1>
-        <p className="mt-1 text-sm capitalize text-muted">{game.categorySlug}</p>
+        <p className="mt-1 text-sm capitalize">
+          <Link href={"/category/" + game.categorySlug} className="text-muted hover:underline">
+            {game.categorySlug}
+          </Link>
+        </p>
       </div>
 
       <GamePlayer title={game.title} thumbnailUrl={game.thumbnailUrl} embedUrl={game.embedUrl} />
@@ -62,11 +66,13 @@ async function GameContent({ params }: { params: Params }) {
         {game.tags.length > 0 && (
           <ul className="flex flex-wrap gap-2">
             {game.tags.map((tag) => (
-              <li
-                key={tag}
-                className="rounded-md border border-border px-2 py-1 text-xs text-muted"
-              >
-                {tag}
+              <li key={tag}>
+                <Link
+                  href={"/tag/" + encodeURIComponent(tag)}
+                  className="inline-block rounded-md border border-border px-2 py-1 text-xs text-muted hover:border-brand"
+                >
+                  {tag}
+                </Link>
               </li>
             ))}
           </ul>

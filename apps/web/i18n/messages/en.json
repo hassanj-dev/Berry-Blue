@@ -64,5 +64,13 @@
     "about": "About this game",
     "devices": "Playable on",
     "related": "More {category} games"
+  },
+  "category": {
+    "browse": "Browse by category",
+    "title": "{name} games",
+    "empty": "No games in this category yet."
+  },
+  "tag": {
+    "title": "{tag} games"
   }
 }

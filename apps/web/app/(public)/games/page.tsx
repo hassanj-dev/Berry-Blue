@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { CategoryChips } from "@/components/game/CategoryChips";
 import { GameCard, GameCardSkeleton } from "@/components/game/GameCard";
 import { Pagination } from "@/components/game/Pagination";
 import { SortTabs } from "@/components/game/SortTabs";
@@ -18,6 +19,11 @@ export default function GamesPage({ searchParams }: { searchParams: SearchParams
   return (
     <main>
       <h1 className="text-2xl font-bold md:text-4xl">{t("games.title")}</h1>
+      <div className="mt-4">
+        <Suspense fallback={null}>
+          <CategoryChips />
+        </Suspense>
+      </div>
       <div className="mt-4">
         <Suspense fallback={<GamesGridSkeleton />}>
           <GamesResults searchParams={searchParams} />

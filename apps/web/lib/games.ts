@@ -1,5 +1,5 @@
 import { cacheLife } from "next/cache";
-import { gameSchema, type Game } from "@berryblue/shared";
+import { categorySchema, gameSchema, type Category, type Game } from "@berryblue/shared";
 import { PAGE_SIZE, type SortName } from "@/lib/games-query";
 import { createPublicClient } from "@/lib/supabase/public";
 
@@ -14,9 +14,14 @@ const SORT_COLUMN = {
 const GAME_COLUMNS =
   "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, categories(slug)";
 
-// "!inner" means: only games whose category matches the filter (used for related games).
+// "!inner" means: only games whose category matches the filter.
 const GAME_COLUMNS_INNER =
   "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, categories!inner(slug)";
+
+const SLUG_PATTERN = /^[a-z0-9-]+$/;
+
+// Abhi pagination nahi: ek category ya tag par itne games dikhte hain.
+export const LISTING_LIMIT = 48;
 
 // Database ki row (snake_case) ko Game (camelCase) mein badalta hai aur Zod se check karta hai.
 function parseRow(row: unknown) {
@@ -53,7 +58,15 @@ function parseRows(rows: unknown[] | null): Game[] {
   return games;
 }
 
-export async function getShelf(shelf: ShelfName, limit = 8): Promise<Game[]> {
+// Rule: "use cache" wale functions error par THROW karte hain (cache mein sirf kamyab jawab
+// jaate hain). Bahar ka wrapper error pakad kar pehle jaisa khali jawab lautata hai.
+
+// ---------- Shelves (homepage) ----------
+
+async function loadShelf(shelf: ShelfName, limit: number): Promise<Game[]> {
+  "use cache";
+  cacheLife("minutes");
+
   const supabase = createPublicClient();
 
   const { data, error } = await supabase
@@ -64,13 +77,21 @@ export async function getShelf(shelf: ShelfName, limit = 8): Promise<Game[]> {
     .order("id")
     .limit(limit);
 
-  if (error) {
-    console.error(`getShelf(${shelf}) failed:`, error.message);
-    return [];
-  }
+  if (error) throw new Error(`getShelf(${shelf}) failed: ${error.message}`);
 
   return parseRows(data);
 }
+
+export async function getShelf(shelf: ShelfName, limit = 8): Promise<Game[]> {
+  try {
+    return await loadShelf(shelf, limit);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+// ---------- All games (sort + pagination) ----------
 
 export type GamesPage = {
   games: Game[];
@@ -79,12 +100,10 @@ export type GamesPage = {
   pageCount: number;
 };
 
-// null ka matlab: database se baat nahi ho saki.
-export async function getGamesPage(
-  sort: SortName,
-  page: number,
-  pageSize = PAGE_SIZE,
-): Promise<GamesPage | null> {
+async function loadGamesPage(sort: SortName, page: number, pageSize: number): Promise<GamesPage> {
+  "use cache";
+  cacheLife("minutes");
+
   const supabase = createPublicClient();
 
   const { count, error: countError } = await supabase
@@ -93,8 +112,7 @@ export async function getGamesPage(
     .eq("is_published", true);
 
   if (countError || count === null) {
-    console.error("getGamesPage count failed:", countError?.message);
-    return null;
+    throw new Error(`getGamesPage count failed: ${countError?.message ?? "no count"}`);
   }
 
   const pageCount = Math.max(1, Math.ceil(count / pageSize));
@@ -110,22 +128,34 @@ export async function getGamesPage(
     .order("id")
     .range(from, from + pageSize - 1);
 
-  if (error) {
-    console.error("getGamesPage failed:", error.message);
-    return null;
-  }
+  if (error) throw new Error(`getGamesPage failed: ${error.message}`);
 
   return { games: parseRows(data), total: count, page, pageCount };
 }
 
-// "use cache": result kuch minute yaad rehta hai, is liye generateMetadata aur page dono
-// database ko baar baar nahi chhedte.
+// null ka matlab: database se baat nahi ho saki.
+export async function getGamesPage(
+  sort: SortName,
+  page: number,
+  pageSize = PAGE_SIZE,
+): Promise<GamesPage | null> {
+  try {
+    return await loadGamesPage(sort, page, pageSize);
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+// ---------- One game ----------
+
+// null = nahi mila. Database error par throw (error page), taake masla cache na ho.
 export async function getGameBySlug(slug: string): Promise<Game | null> {
   "use cache";
   cacheLife("minutes");
 
   // URL se aane wali value par bharosa nahi: ghalat slug par database tak jaana hi nahi.
-  if (!/^[a-z0-9-]+$/.test(slug)) return null;
+  if (!SLUG_PATTERN.test(slug)) return null;
 
   const supabase = createPublicClient();
 
@@ -136,8 +166,6 @@ export async function getGameBySlug(slug: string): Promise<Game | null> {
     .eq("slug", slug)
     .maybeSingle();
 
-  // Error par throw: cache mein sirf kamyab jawab jaate hain, warna ek chhota sa database
-  // masla kuch minute ke liye har game ko 404 bana deta.
   if (error) throw new Error(`getGameBySlug(${slug}) failed: ${error.message}`);
   if (!data) return null;
 
@@ -149,11 +177,17 @@ export async function getGameBySlug(slug: string): Promise<Game | null> {
 
   return result.data;
 }
-export async function getRelatedGames(
+
+// ---------- Related games ----------
+
+async function loadRelatedGames(
   categorySlug: string,
   excludeSlug: string,
-  limit = 4,
+  limit: number,
 ): Promise<Game[]> {
+  "use cache";
+  cacheLife("minutes");
+
   const supabase = createPublicClient();
 
   const { data, error } = await supabase
@@ -166,10 +200,143 @@ export async function getRelatedGames(
     .order("id")
     .limit(limit);
 
-  if (error) {
-    console.error(`getRelatedGames(${categorySlug}) failed:`, error.message);
-    return [];
-  }
+  if (error) throw new Error(`getRelatedGames(${categorySlug}) failed: ${error.message}`);
 
   return parseRows(data);
+}
+
+export async function getRelatedGames(
+  categorySlug: string,
+  excludeSlug: string,
+  limit = 4,
+): Promise<Game[]> {
+  try {
+    return await loadRelatedGames(categorySlug, excludeSlug, limit);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+// ---------- Categories ----------
+
+async function loadCategories(): Promise<Category[]> {
+  "use cache";
+  cacheLife("hours");
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase.from("categories").select("id, slug, name").order("name");
+
+  if (error) throw new Error(`getCategories failed: ${error.message}`);
+
+  const categories: Category[] = [];
+  for (const row of data ?? []) {
+    const result = categorySchema.safeParse(row);
+    if (result.success) {
+      categories.push(result.data);
+    } else {
+      console.error("Skipping invalid category row:", result.error.issues);
+    }
+  }
+
+  return categories;
+}
+
+export async function getCategories(): Promise<Category[]> {
+  try {
+    return await loadCategories();
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+export async function getCategoryBySlug(slug: string): Promise<Category | null> {
+  "use cache";
+  cacheLife("hours");
+
+  if (!SLUG_PATTERN.test(slug)) return null;
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id, slug, name")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) throw new Error(`getCategoryBySlug(${slug}) failed: ${error.message}`);
+  if (!data) return null;
+
+  const result = categorySchema.safeParse(data);
+  return result.success ? result.data : null;
+}
+
+// ---------- Category and tag listings ----------
+
+async function loadCategoryGames(categorySlug: string, limit: number): Promise<Game[]> {
+  "use cache";
+  cacheLife("minutes");
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("games")
+    .select(GAME_COLUMNS_INNER)
+    .eq("is_published", true)
+    .eq("categories.slug", categorySlug)
+    .order("play_count", { ascending: false })
+    .order("id")
+    .limit(limit);
+
+  if (error) throw new Error(`getCategoryGames(${categorySlug}) failed: ${error.message}`);
+
+  return parseRows(data);
+}
+
+export async function getCategoryGames(
+  categorySlug: string,
+  limit = LISTING_LIMIT,
+): Promise<Game[]> {
+  // Ghalat slug par cache entry bhi nahi banti.
+  if (!SLUG_PATTERN.test(categorySlug)) return [];
+
+  try {
+    return await loadCategoryGames(categorySlug, limit);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+async function loadTagGames(tag: string, limit: number): Promise<Game[]> {
+  "use cache";
+  cacheLife("minutes");
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("games")
+    .select(GAME_COLUMNS)
+    .eq("is_published", true)
+    .contains("tags", [tag])
+    .order("play_count", { ascending: false })
+    .order("id")
+    .limit(limit);
+
+  if (error) throw new Error(`getTagGames(${tag}) failed: ${error.message}`);
+
+  return parseRows(data);
+}
+
+export async function getTagGames(tag: string, limit = LISTING_LIMIT): Promise<Game[]> {
+  if (!SLUG_PATTERN.test(tag)) return [];
+
+  try {
+    return await loadTagGames(tag, limit);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
 }

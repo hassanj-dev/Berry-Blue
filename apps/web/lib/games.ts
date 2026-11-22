@@ -1,3 +1,4 @@
+import { cacheLife } from "next/cache";
 import { gameSchema, type Game } from "@berryblue/shared";
 import { PAGE_SIZE, type SortName } from "@/lib/games-query";
 import { createPublicClient } from "@/lib/supabase/public";
@@ -12,6 +13,10 @@ const SORT_COLUMN = {
 
 const GAME_COLUMNS =
   "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, categories(slug)";
+
+// "!inner" means: only games whose category matches the filter (used for related games).
+const GAME_COLUMNS_INNER =
+  "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, categories!inner(slug)";
 
 // Database ki row (snake_case) ko Game (camelCase) mein badalta hai aur Zod se check karta hai.
 function parseRow(row: unknown) {
@@ -111,4 +116,60 @@ export async function getGamesPage(
   }
 
   return { games: parseRows(data), total: count, page, pageCount };
+}
+
+// "use cache": result kuch minute yaad rehta hai, is liye generateMetadata aur page dono
+// database ko baar baar nahi chhedte.
+export async function getGameBySlug(slug: string): Promise<Game | null> {
+  "use cache";
+  cacheLife("minutes");
+
+  // URL se aane wali value par bharosa nahi: ghalat slug par database tak jaana hi nahi.
+  if (!/^[a-z0-9-]+$/.test(slug)) return null;
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("games")
+    .select(GAME_COLUMNS)
+    .eq("is_published", true)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  // Error par throw: cache mein sirf kamyab jawab jaate hain, warna ek chhota sa database
+  // masla kuch minute ke liye har game ko 404 bana deta.
+  if (error) throw new Error(`getGameBySlug(${slug}) failed: ${error.message}`);
+  if (!data) return null;
+
+  const result = parseRow(data);
+  if (!result.success) {
+    console.error(`Invalid game row for ${slug}:`, result.error.issues);
+    return null;
+  }
+
+  return result.data;
+}
+export async function getRelatedGames(
+  categorySlug: string,
+  excludeSlug: string,
+  limit = 4,
+): Promise<Game[]> {
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("games")
+    .select(GAME_COLUMNS_INNER)
+    .eq("is_published", true)
+    .eq("categories.slug", categorySlug)
+    .neq("slug", excludeSlug)
+    .order("play_count", { ascending: false })
+    .order("id")
+    .limit(limit);
+
+  if (error) {
+    console.error(`getRelatedGames(${categorySlug}) failed:`, error.message);
+    return [];
+  }
+
+  return parseRows(data);
 }

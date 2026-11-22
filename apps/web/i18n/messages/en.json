@@ -55,5 +55,14 @@
       "next": "Next",
       "page": "Page {page}"
     }
+  },
+  "game": {
+    "playNow": "Play now",
+    "playerTitle": "{title} game",
+    "backToGames": "All games",
+    "notFound": "Game not found",
+    "about": "About this game",
+    "devices": "Playable on",
+    "related": "More {category} games"
   }
 }

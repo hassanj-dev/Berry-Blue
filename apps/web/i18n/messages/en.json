@@ -1,0 +1,59 @@
+{
+  "common": {
+    "play": "Play",
+    "mascotAlt": "BerryBlue mascot placeholder"
+  },
+  "devices": {
+    "mobile": "Mobile",
+    "tablet": "Tablet",
+    "desktop": "Desktop"
+  },
+  "card": {
+    "playAria": "Play {title}",
+    "likeSoon": "Like (coming soon)",
+    "devices": "Playable on"
+  },
+  "nav": {
+    "main": "Main navigation",
+    "bottom": "Bottom navigation",
+    "home": "Home",
+    "games": "Games"
+  },
+  "footer": {
+    "links": "Footer links",
+    "about": "About",
+    "contact": "Contact",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "copyright": "{name}. All rights reserved."
+  },
+  "home": {
+    "title": "Play free games instantly",
+    "subtitle": "No downloads. Works on phone, tablet and computer.",
+    "viewAll": "View all",
+    "empty": "No games yet.",
+    "shelves": {
+      "trending": "Trending now",
+      "new": "New games",
+      "popular": "Most played"
+    }
+  },
+  "games": {
+    "title": "All games",
+    "error": "Could not load games. Please try again.",
+    "empty": "No games found.",
+    "showing": "Showing {from}-{to} of {total} games",
+    "sortBy": "Sort games",
+    "sort": {
+      "trending": "Trending",
+      "new": "Newest",
+      "popular": "Most played"
+    },
+    "pagination": {
+      "label": "Pagination",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {page}"
+    }
+  }
+}

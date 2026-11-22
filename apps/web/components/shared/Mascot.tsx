@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+
 export function Mascot({ size = 96 }: { size?: number }) {
   return (
     <svg
@@ -5,7 +7,7 @@ export function Mascot({ size = 96 }: { size?: number }) {
       height={size}
       viewBox="0 0 100 100"
       role="img"
-      aria-label="BerryBlue mascot placeholder"
+      aria-label={t("common.mascotAlt")}
     >
       <circle cx="50" cy="55" r="38" fill="var(--brand)" />
       <circle cx="38" cy="50" r="6" fill="var(--brand-foreground)" />

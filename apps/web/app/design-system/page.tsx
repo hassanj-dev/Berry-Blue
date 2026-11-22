@@ -24,18 +24,35 @@ const games: GameCardData[] = [
     slug: "puzzle-blocks",
     title: "Puzzle Blocks",
     categorySlug: "puzzle",
+    tags: ["brain", "casual"],
     devices: ["mobile", "desktop"],
+    thumbnailUrl: "/thumbs/puzzle-blocks.svg",
   },
   {
     slug: "speed-racer",
     title: "Speed Racer",
     categorySlug: "racing",
+    tags: ["cars", "fast"],
     devices: ["mobile", "tablet", "desktop"],
+    thumbnailUrl: "/thumbs/speed-racer.svg",
   },
-  { slug: "word-quest", title: "Word Quest", categorySlug: "word", devices: ["mobile"] },
-  { slug: "tower-guard", title: "Tower Guard", categorySlug: "strategy", devices: ["desktop"] },
+  {
+    slug: "word-quest",
+    title: "Word Quest",
+    categorySlug: "word",
+    tags: ["letters"],
+    devices: ["mobile"],
+    thumbnailUrl: "/thumbs/word-quest.svg",
+  },
+  {
+    slug: "tower-guard",
+    title: "Tower Guard",
+    categorySlug: "strategy",
+    tags: [],
+    devices: ["desktop"],
+    thumbnailUrl: "/thumbs/tower-guard.svg",
+  },
 ];
-
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mt-10">

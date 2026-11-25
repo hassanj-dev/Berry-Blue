@@ -5,6 +5,7 @@ import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { t } from "@/i18n";
 import { recordPlay } from "@/lib/play-actions";
+import { addRecent } from "@/lib/recent";
 import { cn } from "@/lib/cn";
 
 type GamePlayerProps = {
@@ -14,6 +15,7 @@ type GamePlayerProps = {
   // Buttons shown under the player (like, share ... come in later steps).
   actions?: ReactNode;
   gameId: string;
+  slug: string;
 };
 
 // sandbox = the least permission the game needs inside the iframe.
@@ -35,7 +37,14 @@ function subscribeNothing() {
   return () => {};
 }
 
-export function GamePlayer({ gameId, title, thumbnailUrl, embedUrl, actions }: GamePlayerProps) {
+export function GamePlayer({
+  gameId,
+  slug,
+  title,
+  thumbnailUrl,
+  embedUrl,
+  actions,
+}: GamePlayerProps) {
   const [playing, setPlaying] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
@@ -53,6 +62,7 @@ export function GamePlayer({ gameId, title, thumbnailUrl, embedUrl, actions }: G
 
   function handlePlay() {
     setPlaying(true);
+    addRecent(slug);
 
     // Count each game once per browser session (a page refresh does not count again).
     const key = "played:" + gameId;

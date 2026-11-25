@@ -460,3 +460,31 @@ export async function searchGames(query: string, limit = LISTING_LIMIT): Promise
     return null;
   }
 }
+
+// ---------- Games by slug (favorites, recently played) ----------
+
+// Returns the games in the order of the slugs. Unknown or unpublished slugs are dropped.
+// Not cached: every visitor has a different list. null = the database could not be reached.
+export async function getGamesBySlugs(slugs: string[]): Promise<Game[] | null> {
+  const unique = [...new Set(slugs)].slice(0, 50);
+  if (unique.length === 0) return [];
+
+  try {
+    const { data, error } = await createPublicClient()
+      .from("games")
+      .select(GAME_COLUMNS)
+      .eq("is_published", true)
+      .in("slug", unique);
+
+    if (error) throw new Error(`getGamesBySlugs failed: ${error.message}`);
+
+    const bySlug = new Map(parseRows(data).map((game) => [game.slug, game]));
+    return unique.flatMap((slug) => {
+      const game = bySlug.get(slug);
+      return game ? [game] : [];
+    });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}

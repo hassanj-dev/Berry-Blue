@@ -1,4 +1,12 @@
 {
+  "favorites": {
+    "title": "My favorites",
+    "link": "Favorites",
+    "action": "Favorite",
+    "empty": "You have no favorites yet. Tap the heart on a game to save it here.",
+    "browse": "Browse games",
+    "error": "Could not load your favorites. Please try again."
+  },
   "common": {
     "play": "Play",
     "mascotAlt": "BerryBlue mascot placeholder"
@@ -10,7 +18,7 @@
   },
   "card": {
     "playAria": "Play {title}",
-    "likeSoon": "Like (coming soon)",
+    "favorite": "Favorite",
     "devices": "Playable on"
   },
   "nav": {

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { DeviceIcon } from "@/components/game/DeviceIcon";
+import { FavoriteAction } from "@/components/game/FavoriteButton";
 import { GameCard } from "@/components/game/GameCard";
 import { GamePlayer } from "@/components/game/GamePlayer";
 import { PlayCount } from "@/components/game/PlayCount";
@@ -61,9 +62,11 @@ async function GameContent({ params }: { params: Params }) {
 
       <GamePlayer
         gameId={game.id}
+        slug={game.slug}
         title={game.title}
         thumbnailUrl={game.thumbnailUrl}
         embedUrl={game.embedUrl}
+        actions={<FavoriteAction slug={game.slug} />}
       />
       <Suspense fallback={null}>
         <PlayCount gameId={game.id} />

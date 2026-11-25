@@ -24,7 +24,7 @@ export interface ProviderAdapter {
 
 export type StagedStatus = "pending" | "invalid";
 
-// staged_games table ki ek row (camelCase). category_id review par tay hoti hai, yahan nahi.
+// staged_games table ki ek row (camelCase). categoryId import par mapping se bharti hai, review par badal sakti hai.
 export type StagedRow = {
   provider: Provider;
   providerGameId: string;

@@ -5,6 +5,9 @@ import { Suspense } from "react";
 import { DeviceIcon } from "@/components/game/DeviceIcon";
 import { GameCard } from "@/components/game/GameCard";
 import { GamePlayer } from "@/components/game/GamePlayer";
+import { PlayCount } from "@/components/game/PlayCount";
+import { GameShare } from "@/components/game/GameShare";
+import { GameVotes } from "@/components/game/GameVotes";
 import { t } from "@/i18n";
 import { getGameBySlug, getRelatedGames } from "@/lib/games";
 
@@ -55,7 +58,19 @@ async function GameContent({ params }: { params: Params }) {
         </p>
       </div>
 
-      <GamePlayer title={game.title} thumbnailUrl={game.thumbnailUrl} embedUrl={game.embedUrl} />
+      <Suspense fallback={null}>
+        <PlayCount gameId={game.id} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <GameVotes gameId={game.id} />
+      </Suspense>
+      <GameShare title={game.title} />
+      <GamePlayer
+        gameId={game.id}
+        title={game.title}
+        thumbnailUrl={game.thumbnailUrl}
+        embedUrl={game.embedUrl}
+      />
 
       <section aria-labelledby="about-heading" className="flex flex-col gap-3">
         <h2 id="about-heading" className="text-lg font-bold">

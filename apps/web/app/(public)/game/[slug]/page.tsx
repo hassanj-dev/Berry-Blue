@@ -6,6 +6,7 @@ import { DeviceIcon } from "@/components/game/DeviceIcon";
 import { GameCard } from "@/components/game/GameCard";
 import { GamePlayer } from "@/components/game/GamePlayer";
 import { PlayCount } from "@/components/game/PlayCount";
+import { GameReport } from "@/components/game/GameReport";
 import { GameShare } from "@/components/game/GameShare";
 import { GameVotes } from "@/components/game/GameVotes";
 import { t } from "@/i18n";
@@ -65,6 +66,7 @@ async function GameContent({ params }: { params: Params }) {
         <GameVotes gameId={game.id} />
       </Suspense>
       <GameShare title={game.title} />
+      <GameReport gameId={game.id} />
       <GamePlayer
         gameId={game.id}
         title={game.title}

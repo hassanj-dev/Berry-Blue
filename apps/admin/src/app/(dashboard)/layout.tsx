@@ -11,6 +11,7 @@ const links = [
   { href: "/providers", label: "Providers" },
   { href: "/categories", label: "Categories" },
   { href: "/tags", label: "Tags" },
+  { href: "/reports", label: "Reports" },
   { href: "/audit-logs", label: "Audit log" },
 ];
 

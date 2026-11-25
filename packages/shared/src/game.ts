@@ -2,13 +2,11 @@ import { z } from "zod";
 
 export const deviceSchema = z.enum(["mobile", "tablet", "desktop"]);
 
-export const providerSchema = z.enum([
-  "self-hosted",
-  "direct",
-  "gamedistribution",
-  "gamezop",
-  "playgama",
-]);
+export const providerSchema = z
+  .string()
+  .regex(/^[a-z0-9-]+$/, "lowercase letters, numbers and dashes only")
+  .min(2)
+  .max(40);
 
 // Poora URL (https://...) ya apni site ka raasta (/thumbs/x.svg).
 export const urlOrPathSchema = z.union([

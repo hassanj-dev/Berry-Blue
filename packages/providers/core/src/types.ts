@@ -38,6 +38,7 @@ export type StagedRow = {
   tags: string[];
   devices: string[];
   contentHash: string;
+  categoryId?: string | null;
   status: StagedStatus;
   validationErrors: { path: string; message: string }[] | null;
 };
@@ -56,6 +57,10 @@ export interface StagingStore {
   startBatch(provider: Provider): Promise<string>;
   // providerGameId -> ab tak dekhe gaye hashes (staged_games se).
   getKnownHashes(provider: Provider): Promise<Map<string, Set<string>>>;
+  // normalized provider category -> our category_id.
+  getCategoryMappings(provider: Provider): Promise<Map<string, string>>;
+  // normalized provider category -> hamari category_id.
+  getCategoryMappings(provider: Provider): Promise<Map<string, string>>;
   // Duplicate (provider, provider_game_id, content_hash) khamoshi se chhod dena chahiye.
   insertStaged(batchId: string, rows: StagedRow[]): Promise<void>;
   finishBatch(batchId: string, stats: ImportStats): Promise<void>;

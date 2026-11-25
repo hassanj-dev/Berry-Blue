@@ -43,6 +43,19 @@ export function createSupabaseStagingStore(supabase: SupabaseClient): StagingSto
       return known;
     },
 
+    async getCategoryMappings(provider) {
+      const { data, error } = await supabase
+        .from("category_mappings")
+        .select("provider_category, category_id")
+        .eq("provider", provider);
+
+      if (error) throw new Error(`getCategoryMappings failed: ${error.message}`);
+
+      return new Map<string, string>(
+        data.map((row): [string, string] => [row.provider_category, row.category_id]),
+      );
+    },
+
     async insertStaged(batchId, rows) {
       for (let i = 0; i < rows.length; i += INSERT_CHUNK) {
         const chunk = rows.slice(i, i + INSERT_CHUNK).map((row) => ({
@@ -56,6 +69,7 @@ export function createSupabaseStagingStore(supabase: SupabaseClient): StagingSto
           thumbnail_url: row.thumbnailUrl ?? null,
           embed_url: row.embedUrl ?? null,
           provider_category: row.providerCategory ?? null,
+          category_id: row.categoryId ?? null,
           tags: row.tags,
           devices: row.devices,
           content_hash: row.contentHash,

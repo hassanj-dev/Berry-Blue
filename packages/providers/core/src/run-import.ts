@@ -1,4 +1,5 @@
 import { contentHash } from "./hash";
+import { normalizeProviderCategory } from "./normalize";
 import type { ImportStats, ProviderAdapter, StagedRow, StagingStore } from "./types";
 import { validateDraft } from "./validate";
 
@@ -27,6 +28,7 @@ export async function runImport(
   try {
     const catalog = await adapter.fetchCatalog();
     const known = await store.getKnownHashes(adapter.provider);
+    const categoryMap = await store.getCategoryMappings(adapter.provider);
     const seenInFeed = new Set<string>();
     const rows: StagedRow[] = [];
 
@@ -67,6 +69,8 @@ export async function runImport(
         providerGameId: draft.providerGameId,
         raw,
         providerCategory: draft.providerCategory,
+        categoryId:
+          categoryMap.get(normalizeProviderCategory(draft.providerCategory) ?? "") ?? null,
         contentHash: hash,
       };
 

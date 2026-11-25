@@ -1,0 +1,35 @@
+name: Daily health check
+
+on:
+  schedule:
+    # Every day at 03:47 UTC, after the import.
+    - cron: "47 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-health-check
+  cancel-in-progress: false
+
+jobs:
+  health:
+    # Runs only when the repository variable WEB_BASE_URL is set (the public site address).
+    if: ${{ vars.WEB_BASE_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check embeds
+        run: pnpm --filter @berryblue/worker exec tsx src/check-health.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          WEB_BASE_URL: ${{ vars.WEB_BASE_URL }}

@@ -19,6 +19,16 @@
     "home": "Home",
     "games": "Games"
   },
+  "search": {
+    "title": "Search games",
+    "label": "Search games",
+    "placeholder": "Search games",
+    "tooShort": "Type at least 2 letters to search.",
+    "suggestions": "Search suggestions",
+    "error": "Search is not working right now. Please try again.",
+    "empty": "No games found for \"{query}\".",
+    "results": "{count} games found for \"{query}\""
+  },
   "footer": {
     "links": "Footer links",
     "about": "About",

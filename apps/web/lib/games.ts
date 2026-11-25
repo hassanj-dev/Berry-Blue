@@ -368,3 +368,64 @@ export async function getTagGames(tag: string, limit = LISTING_LIMIT): Promise<G
     return [];
   }
 }
+
+// ---------- Search ----------
+
+// % _ and \ mean something special inside ilike, so they are escaped.
+function escapeLike(value: string) {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+// Not cached on purpose: visitors can type anything, so the cache would never stop growing.
+// Call it inside Suspense. null = the database could not be reached.
+export async function searchGames(query: string, limit = LISTING_LIMIT): Promise<Game[] | null> {
+  const q = query.trim().toLowerCase();
+  if (q.length === 0) return [];
+
+  try {
+    const supabase = createPublicClient();
+
+    const byTitle = await supabase
+      .from("games")
+      .select(GAME_COLUMNS)
+      .eq("is_published", true)
+      .ilike("title", `%${escapeLike(q)}%`)
+      .order("play_count", { ascending: false })
+      .order("id")
+      .limit(limit);
+
+    if (byTitle.error) throw new Error(`searchGames title failed: ${byTitle.error.message}`);
+
+    const found = parseRows(byTitle.data);
+
+    // Tags are lowercase with dashes ("word-puzzle"), so "word puzzle" is tried as that tag.
+    const tag = q.replace(/\s+/g, "-");
+    if (SLUG_PATTERN.test(tag)) {
+      const byTag = await supabase
+        .from("games")
+        .select(GAME_COLUMNS)
+        .eq("is_published", true)
+        .contains("tags", [tag])
+        .order("play_count", { ascending: false })
+        .order("id")
+        .limit(limit);
+
+      if (byTag.error) throw new Error(`searchGames tag failed: ${byTag.error.message}`);
+      found.push(...parseRows(byTag.data));
+    }
+
+    const unique = [...new Map(found.map((game) => [game.id, game])).values()];
+
+    // 0 = title starts with the search, 1 = title contains it, 2 = tag match only.
+    // sort() is stable, so equal ranks keep the play_count order.
+    const rank = (game: Game) => {
+      const title = game.title.toLowerCase();
+      return title.startsWith(q) ? 0 : title.includes(q) ? 1 : 2;
+    };
+
+    return unique.sort((a, b) => rank(a) - rank(b)).slice(0, limit);
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}

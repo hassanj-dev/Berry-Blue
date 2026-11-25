@@ -9,6 +9,8 @@ const links = [
   { href: "/moderation", label: "Moderation" },
   { href: "/games", label: "Games" },
   { href: "/providers", label: "Providers" },
+  { href: "/categories", label: "Categories" },
+  { href: "/tags", label: "Tags" },
   { href: "/audit-logs", label: "Audit log" },
 ];
 

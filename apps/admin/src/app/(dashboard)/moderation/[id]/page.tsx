@@ -30,10 +30,13 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
       (c) => c.slug === providerCategory || c.name.toLowerCase() === providerCategory,
     );
 
+  const mappedName = categories.find((c) => c.id === game.category_id)?.name;
+
   const rows: [string, string][] = [
     ["Provider", game.provider],
     ["Provider game ID", game.provider_game_id],
     ["Provider category", game.provider_category ?? "-"],
+    ["Suggested from mapping", mappedName ?? "none"],
     ["Slug", game.slug ?? "-"],
     ["Tags", game.tags.length ? game.tags.join(", ") : "-"],
     ["Devices", game.devices.length ? game.devices.join(", ") : "-"],

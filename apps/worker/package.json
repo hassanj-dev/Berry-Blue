@@ -6,13 +6,15 @@
   "scripts": {
     "import-catalog": "tsx --env-file=.env src/import.ts",
     "check-health": "tsx --env-file=.env src/check-health.ts",
+    "process-thumbnails": "tsx --env-file=.env src/process-thumbnails.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@berryblue/provider-core": "workspace:*",
     "@berryblue/provider-self-hosted": "workspace:*",
     "@berryblue/shared": "workspace:*",
-    "@supabase/supabase-js": "^2"
+    "@supabase/supabase-js": "^2",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

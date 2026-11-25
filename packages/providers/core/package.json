@@ -1,0 +1,18 @@
+{
+  "name": "@berryblue/provider-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@berryblue/shared": "workspace:*",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

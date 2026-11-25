@@ -1,0 +1,21 @@
+{
+  "name": "@berryblue/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "import-catalog": "tsx --env-file=.env src/import.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@berryblue/provider-core": "workspace:*",
+    "@berryblue/provider-self-hosted": "workspace:*",
+    "@berryblue/shared": "workspace:*",
+    "@supabase/supabase-js": "^2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3"
+  }
+}

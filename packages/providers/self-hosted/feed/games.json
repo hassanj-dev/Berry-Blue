@@ -1,0 +1,61 @@
+[
+  {
+    "id": "demo-tap-target",
+    "name": "Tap Target",
+    "summary": "Tap the target as many times as you can.",
+    "thumbnail": "/thumbs/puzzle-blocks.svg",
+    "url": "/embed/demo.html",
+    "category": "puzzle",
+    "tags": ["quick", "brain"],
+    "devices": ["mobile", "tablet", "desktop"]
+  },
+  {
+    "id": "demo-color-dash",
+    "name": "Color Dash",
+    "summary": "A fast test game for the import pipeline.",
+    "thumbnail": "/thumbs/speed-racer.svg",
+    "url": "/embed/demo.html",
+    "category": "racing",
+    "tags": ["fast"],
+    "devices": ["mobile", "desktop"]
+  },
+  {
+    "id": "demo-word-hunt",
+    "name": "Word Hunt",
+    "summary": "Another test game for the import pipeline.",
+    "thumbnail": "/thumbs/word-quest.svg",
+    "url": "/embed/demo.html",
+    "category": "word",
+    "tags": ["vocabulary"],
+    "devices": ["desktop"]
+  },
+  {
+    "id": "Bad Game!",
+    "name": "Broken Slug Game",
+    "summary": "Ghalat slug aur embed url nahi: invalid hona chahiye.",
+    "thumbnail": "/thumbs/gem-match.svg",
+    "category": "puzzle",
+    "tags": [],
+    "devices": ["mobile"]
+  },
+  {
+    "id": "demo-no-device",
+    "name": "No Device Game",
+    "summary": "Koi device nahi: invalid hona chahiye.",
+    "thumbnail": "/thumbs/pet-match.svg",
+    "url": "/embed/demo.html",
+    "category": "casual",
+    "tags": [],
+    "devices": []
+  },
+  {
+    "id": "demo-tap-target",
+    "name": "Tap Target",
+    "summary": "Tap the target as many times as you can.",
+    "thumbnail": "/thumbs/puzzle-blocks.svg",
+    "url": "/embed/demo.html",
+    "category": "puzzle",
+    "tags": ["quick", "brain"],
+    "devices": ["mobile", "tablet", "desktop"]
+  }
+]

@@ -11,7 +11,7 @@ export const providerSchema = z.enum([
 ]);
 
 // Poora URL (https://...) ya apni site ka raasta (/thumbs/x.svg).
-const urlOrPathSchema = z.union([
+export const urlOrPathSchema = z.union([
   z.url(),
   z.string().regex(/^\/\S*$/, "must be a URL or a path starting with /"),
 ]);

@@ -1,0 +1,2919 @@
+
+===== FILE: apps\admin\next.config.ts =====
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "same-origin" },
+        ],
+      },
+    ];
+  },
+  turbopack: {
+    rules: {
+      "*.css": {
+        loaders: ["@tailwindcss/turbopack"],
+        as: "*.css",
+      },
+    },
+  },
+};
+
+export default nextConfig;
+
+
+===== FILE: apps\admin\package.json =====
+{
+  "name": "@berryblue/admin",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.119.2",
+    "next": "16.4.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "4.3.3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "4.3.3",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@12.21.0"
+}
+
+
+===== FILE: apps\admin\src\app\(dashboard)\audit-logs\page.tsx =====
+import type { Metadata } from "next";
+import { requireAdmin } from "@/lib/auth";
+import { createSecretClient } from "@/lib/supabase/secret";
+
+export const metadata: Metadata = { title: "Audit log" };
+
+type LogRow = {
+  id: string;
+  admin_id: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  details: Record<string, unknown>;
+  created_at: string;
+};
+
+export default async function AuditLogsPage() {
+  await requireAdmin();
+  const supabase = createSecretClient();
+
+  const { data, error } = await supabase
+    .from("audit_logs")
+    .select("id, admin_id, action, entity_type, entity_id, details, created_at")
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error) throw new Error(`audit log failed: ${error.message}`);
+  const logs = (data ?? []) as LogRow[];
+
+  // Show admin emails instead of raw ids. Only look up the admins that appear in this log.
+  const adminIds = [...new Set(logs.map((l) => l.admin_id).filter((id): id is string => !!id))];
+  const emails = new Map<string, string>();
+  await Promise.all(
+    adminIds.map(async (id) => {
+      const { data: result } = await supabase.auth.admin.getUserById(id);
+      if (result.user?.email) emails.set(id, result.user.email);
+    }),
+  );
+
+  return (
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">Audit log</h1>
+
+      {logs.length === 0 ? (
+        <p className="text-muted">Nothing recorded yet.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl border border-border">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-surface text-muted">
+              <tr>
+                <th className="px-3 py-2">When</th>
+                <th className="px-3 py-2">Admin</th>
+                <th className="px-3 py-2">Action</th>
+                <th className="px-3 py-2">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map((log) => (
+                <tr key={log.id} className="border-t border-border align-top">
+                  <td className="whitespace-nowrap px-3 py-2">
+                    {new Date(log.created_at).toLocaleString("en-GB")}
+                  </td>
+                  <td className="px-3 py-2">
+                    {log.admin_id ? (emails.get(log.admin_id) ?? log.admin_id) : "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 font-medium">{log.action}</td>
+                  <td className="break-all px-3 py-2 text-muted">{JSON.stringify(log.details)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+===== FILE: apps\admin\src\app\(dashboard)\error.tsx =====
+"use client";
+
+import { useRouter } from "next/navigation";
+import { startTransition } from "react";
+
+export default function DashboardError({ reset }: { reset: () => void }) {
+  const router = useRouter();
+
+  // refresh() re-fetches the server data, then reset() re-renders the page.
+  function retry() {
+    startTransition(() => {
+      router.refresh();
+      reset();
+    });
+  }
+
+  return (
+    <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-danger p-4">
+      <h1 className="text-lg font-bold text-danger">Something went wrong</h1>
+      <p className="text-sm">The action could not be completed. Try again, or reload the page.</p>
+      <button
+        type="button"
+        onClick={retry}
+        className="self-start rounded-lg border border-border px-3 py-1.5 text-sm hover:border-brand"
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
+
+===== FILE: apps\admin\src\app\(dashboard)\games\page.tsx =====
+import type { Metadata } from "next";
+import { requireAdmin } from "@/lib/auth";
+import { setPublished } from "@/lib/games-actions";
+import { createSecretClient } from "@/lib/supabase/secret";
+
+export const metadata: Metadata = { title: "Games" };
+
+type GameRow = {
+  id: string;
+  slug: string;
+  title: string;
+  provider: string;
+  is_published: boolean;
+  categories: { name: string } | null;
+};
+
+export default async function GamesPage() {
+  await requireAdmin();
+
+  const { data, error } = await createSecretClient()
+    .from("games")
+    .select("id, slug, title, provider, is_published, categories(name)")
+    .order("title")
+    .order("id")
+    .limit(500);
+
+  if (error) throw new Error(`games list failed: ${error.message}`);
+  const games = (data ?? []) as unknown as GameRow[];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">Games ({games.length})</h1>
+
+      <ul className="flex flex-col gap-2">
+        {games.map((game) => (
+          <li
+            key={game.id}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4"
+          >
+            <div className="flex flex-col">
+              <span className="font-semibold">{game.title}</span>
+              <span className="text-sm text-muted">
+                {game.slug} &middot; {game.categories?.name ?? "no category"} &middot;{" "}
+                {game.provider}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className={"text-sm " + (game.is_published ? "" : "text-danger")}>
+                {game.is_published ? "Live" : "Hidden"}
+              </span>
+              <form action={setPublished}>
+                <input type="hidden" name="gameId" value={game.id} />
+                <input
+                  type="hidden"
+                  name="published"
+                  value={game.is_published ? "false" : "true"}
+                />
+                <button
+                  type="submit"
+                  className="rounded-lg border border-border px-3 py-1.5 text-sm hover:border-brand"
+                >
+                  {game.is_published ? "Unpublish" : "Publish"}
+                </button>
+              </form>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+
+===== FILE: apps\admin\src\app\(dashboard)\layout.tsx =====
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+import { requireAdmin } from "@/lib/auth";
+import { logout } from "@/lib/auth-actions";
+
+const links = [
+  { href: "/overview", label: "Overview" },
+  { href: "/moderation", label: "Moderation" },
+  { href: "/games", label: "Games" },
+  { href: "/audit-logs", label: "Audit log" },
+];
+
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
+  const admin = await requireAdmin();
+
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
+        <nav className="flex flex-wrap items-center gap-4 text-sm font-medium">
+          <span className="font-bold">BerryBlue Admin</span>
+          {links.map((link) => (
+            <Link key={link.href} href={link.href} className="hover:underline">
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="flex items-center gap-3 text-sm">
+          <span className="text-muted">{admin.email}</span>
+          <form action={logout}>
+            <button
+              type="submit"
+              className="rounded-lg border border-border px-3 py-1.5 hover:border-brand"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
+      </header>
+      <div className="mx-auto w-full max-w-6xl flex-1 p-4 md:p-8">{children}</div>
+    </div>
+  );
+}
+
+
+===== FILE: apps\admin\src\app\(dashboard)\moderation\[id]\page.tsx =====
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { z } from "zod";
+import { requireAdmin } from "@/lib/auth";
+import { formatValidationErrors, getStaged, listCategories } from "@/lib/moderation";
+import { ReviewForm } from "./ReviewForm";
+
+export const metadata: Metadata = { title: "Review game" };
+
+const isHttpUrl = (value: string | null): value is string => !!value && /^https?:\/\//i.test(value);
+
+export default async function ReviewPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
+
+  const { id } = await params;
+  if (!z.uuid().safeParse(id).success) notFound();
+
+  const game = await getStaged(id);
+  if (!game) notFound();
+
+  const errors = formatValidationErrors(game.validation_errors);
+  const categories = game.status === "pending" ? await listCategories() : [];
+
+  // Pre-select a category if the provider's category matches one of ours (admin can still change it).
+  const providerCategory = game.provider_category?.trim().toLowerCase();
+  const suggested =
+    categories.find((c) => c.id === game.category_id) ??
+    categories.find(
+      (c) => c.slug === providerCategory || c.name.toLowerCase() === providerCategory,
+    );
+
+  const rows: [string, string][] = [
+    ["Provider", game.provider],
+    ["Provider game ID", game.provider_game_id],
+    ["Provider category", game.provider_category ?? "-"],
+    ["Slug", game.slug ?? "-"],
+    ["Tags", game.tags.length ? game.tags.join(", ") : "-"],
+    ["Devices", game.devices.length ? game.devices.join(", ") : "-"],
+    ["Status", game.status],
+  ];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Link
+        href={"/moderation?status=" + game.status}
+        className="text-sm text-brand hover:underline"
+      >
+        &larr; Back to list
+      </Link>
+
+      <h1 className="text-2xl font-bold">{game.title ?? "(no title)"}</h1>
+
+      {errors.length > 0 && (
+        <div role="alert" className="rounded-2xl border border-danger p-4">
+          <h2 className="font-bold text-danger">Validation errors</h2>
+          <ul className="mt-2 list-disc pl-5 text-sm">
+            {errors.map((e, i) => (
+              <li key={i}>{e}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="grid gap-6 md:grid-cols-[16rem_1fr]">
+        <div className="flex flex-col gap-3">
+          {isHttpUrl(game.thumbnail_url) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={game.thumbnail_url}
+              alt=""
+              className="w-full rounded-2xl border border-border"
+            />
+          ) : (
+            <p className="rounded-2xl border border-border bg-surface p-4 text-sm text-muted">
+              Thumbnail: {game.thumbnail_url ?? "none"}
+            </p>
+          )}
+          {isHttpUrl(game.embed_url) ? (
+            <a
+              href={game.embed_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-brand hover:underline"
+            >
+              Open game in a new tab
+            </a>
+          ) : (
+            <p className="text-sm text-muted">Embed: {game.embed_url ?? "none"}</p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <p className="text-sm">{game.description || "No description."}</p>
+          <dl className="grid grid-cols-[10rem_1fr] gap-x-4 gap-y-2 text-sm">
+            {rows.map(([label, value]) => (
+              <div key={label} className="contents">
+                <dt className="text-muted">{label}</dt>
+                <dd className="break-all">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
+
+      {game.status === "pending" ? (
+        <ReviewForm
+          stagedId={game.id}
+          defaultSlug={game.slug ?? ""}
+          defaultCategoryId={suggested?.id ?? ""}
+          categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+        />
+      ) : (
+        <p className="rounded-2xl border border-border bg-surface p-4 text-sm">
+          This game is <strong>{game.status}</strong>, so it cannot be approved or rejected from
+          here.
+        </p>
+      )}
+    </div>
+  );
+}
+
+
+===== FILE: apps\admin\src\app\(dashboard)\moderation\[id]\ReviewForm.tsx =====
+"use client";
+
+import { startTransition, useActionState, useState, type FormEvent } from "react";
+import { approveGame, rejectGame, type ReviewState } from "@/lib/moderation-actions";
+
+type ReviewFormProps = {
+  stagedId: string;
+  defaultSlug: string;
+  defaultCategoryId: string;
+  categories: { id: string; name: string }[];
+};
+
+const initialState: ReviewState = { error: null };
+const inputClass = "rounded-lg border border-border bg-surface px-3 py-2";
+
+// Submitting through onSubmit (not the form's action prop) stops React 19 from clearing the fields after an error.
+function submit(action: (data: FormData) => void) {
+  return (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    startTransition(() => action(data));
+  };
+}
+
+export function ReviewForm({
+  stagedId,
+  defaultSlug,
+  defaultCategoryId,
+  categories,
+}: ReviewFormProps) {
+  const [categoryId, setCategoryId] = useState(defaultCategoryId);
+  const [approveState, approveAction, approving] = useActionState(approveGame, initialState);
+  const [rejectState, rejectAction, rejecting] = useActionState(rejectGame, initialState);
+  const busy = approving || rejecting;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <form
+        onSubmit={submit(approveAction)}
+        className="flex flex-col gap-4 rounded-2xl border border-border p-4"
+      >
+        <h2 className="text-lg font-bold">Approve and publish</h2>
+        <input type="hidden" name="stagedId" value={stagedId} />
+
+        <label className="flex flex-col gap-1 text-sm">
+          Category
+          <select
+            name="categoryId"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">Choose a category...</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          Slug (the game URL)
+          <input name="slug" defaultValue={defaultSlug} required className={inputClass} />
+        </label>
+
+        {approveState.error && (
+          <p role="alert" className="text-sm text-danger">
+            {approveState.error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={!categoryId || busy}
+          className="rounded-lg bg-brand px-4 py-2 font-semibold text-brand-foreground disabled:opacity-50"
+        >
+          {approving ? "Publishing..." : "Approve and publish"}
+        </button>
+        {!categoryId && (
+          <p className="text-sm text-muted">Choose a category to enable this button.</p>
+        )}
+      </form>
+
+      <form
+        onSubmit={submit(rejectAction)}
+        className="flex flex-col gap-4 rounded-2xl border border-border p-4"
+      >
+        <h2 className="text-lg font-bold">Reject</h2>
+        <input type="hidden" name="stagedId" value={stagedId} />
+
+        <label className="flex flex-col gap-1 text-sm">
+          Reason (optional)
+          <input name="reason" maxLength={500} className={inputClass} />
+        </label>
+
+        {rejectState.error && (
+          <p role="alert" className="text-sm text-danger">
+            {rejectState.error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-lg border border-danger px-4 py-2 font-semibold text-danger disabled:opacity-50"
+        >
+          {rejecting ? "Rejecting..." : "Reject"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+
+===== FILE: apps\admin\src\app\(dashboard)\moderation\page.tsx =====
+import type { Metadata } from "next";
+import Link from "next/link";
+import { z } from "zod";
+import { requireAdmin } from "@/lib/auth";
+import { formatValidationErrors, listStaged, STATUSES } from "@/lib/moderation";
+
+export const metadata: Metadata = { title: "Moderation" };
+
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+// Bad values in the URL fall back to "pending" instead of crashing.
+const statusSchema = z.enum(STATUSES).catch("pending");
+
+const TAB_LABELS = {
+  pending: "Pending",
+  invalid: "Invalid",
+  rejected: "Rejected",
+  approved: "Approved",
+} as const;
+
+export default async function ModerationPage({ searchParams }: { searchParams: SearchParams }) {
+  await requireAdmin();
+
+  const status = statusSchema.parse((await searchParams).status);
+  const games = await listStaged(status);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">Moderation</h1>
+
+      <nav aria-label="Filter by status">
+        <ul className="flex flex-wrap gap-2">
+          {STATUSES.map((s) => (
+            <li key={s}>
+              <Link
+                href={"/moderation?status=" + s}
+                aria-current={s === status ? "true" : undefined}
+                className={
+                  "inline-flex min-h-10 items-center rounded-xl border border-border px-4 text-sm font-medium " +
+                  (s === status ? "bg-brand text-brand-foreground" : "bg-surface")
+                }
+              >
+                {TAB_LABELS[s]}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {games.length === 0 ? (
+        <p className="text-muted">No {TAB_LABELS[status].toLowerCase()} games.</p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {games.map((game) => {
+            const errors = formatValidationErrors(game.validation_errors);
+            return (
+              <li key={game.id}>
+                <Link
+                  href={"/moderation/" + game.id}
+                  className="flex flex-col gap-1 rounded-2xl border border-border bg-surface p-4 hover:border-brand"
+                >
+                  <span className="font-semibold">{game.title ?? "(no title)"}</span>
+                  <span className="text-sm text-muted">
+                    {game.provider} &middot; {game.provider_category ?? "no category"} &middot;{" "}
+                    {new Date(game.created_at).toLocaleDateString("en-GB")}
+                  </span>
+                  {errors.length > 0 && (
+                    <ul className="mt-1 list-disc pl-5 text-sm text-danger">
+                      {errors.slice(0, 3).map((e, i) => (
+                        <li key={i}>{e}</li>
+                      ))}
+                      {errors.length > 3 && <li>and {errors.length - 3} more</li>}
+                    </ul>
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+
+===== FILE: apps\admin\src\app\(dashboard)\overview\page.tsx =====
+import type { Metadata } from "next";
+import { requireAdmin } from "@/lib/auth";
+import { createSecretClient } from "@/lib/supabase/secret";
+
+export const metadata: Metadata = { title: "Overview" };
+
+async function countStaged(status: string) {
+  const { count, error } = await createSecretClient()
+    .from("staged_games")
+    .select("id", { count: "exact", head: true })
+    .eq("status", status);
+
+  return error ? null : count;
+}
+
+async function countLiveGames() {
+  const { count, error } = await createSecretClient()
+    .from("games")
+    .select("id", { count: "exact", head: true })
+    .eq("is_published", true);
+
+  return error ? null : count;
+}
+
+export default async function OverviewPage() {
+  await requireAdmin();
+
+  const [pending, invalid, rejected, live] = await Promise.all([
+    countStaged("pending"),
+    countStaged("invalid"),
+    countStaged("rejected"),
+    countLiveGames(),
+  ]);
+
+  const cards = [
+    { label: "Pending review", value: pending },
+    { label: "Invalid", value: invalid },
+    { label: "Rejected", value: rejected },
+    { label: "Live games", value: live },
+  ];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">Overview</h1>
+      <ul className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {cards.map((card) => (
+          <li key={card.label} className="rounded-2xl border border-border bg-surface p-4">
+            <p className="text-sm text-muted">{card.label}</p>
+            <p className="mt-1 text-3xl font-bold">{card.value ?? "-"}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+
+===== FILE: apps\admin\src\app\(dashboard)\providers\AddProviderForm.tsx =====
+"use client";
+
+import { useActionState } from "react";
+import { createProvider, type CreateProviderState } from "@/lib/providers-actions";
+
+const initialState: CreateProviderState = { error: null, message: null, values: {} };
+
+const inputClass = "rounded-lg border border-border bg-background px-3 py-2 text-sm";
+
+export function AddProviderForm() {
+  const [state, formAction, pending] = useActionState(createProvider, initialState);
+
+  return (
+    <details
+      className="rounded-2xl border border-border bg-surface p-4"
+      open={state.error !== null}
+    >
+      <summary className="cursor-pointer font-medium">Add provider</summary>
+
+      <form action={formAction} className="mt-4 grid gap-3 md:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          Provider id
+          <input
+            name="provider"
+            required
+            minLength={2}
+            maxLength={40}
+            pattern="[a-z0-9\-]+"
+            autoComplete="off"
+            placeholder="for example: gamezop"
+            defaultValue={state.values.provider ?? ""}
+            className={inputClass}
+          />
+          <span className="text-xs text-muted">
+            Lowercase letters, numbers and dashes. It is stored on every game and cannot be changed
+            later.
+          </span>
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          Display name
+          <input
+            name="displayName"
+            required
+            maxLength={60}
+            defaultValue={state.values.displayName ?? ""}
+            className={inputClass}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          License status
+          <select
+            name="licenseStatus"
+            defaultValue={state.values.licenseStatus ?? "unverified"}
+            className={inputClass}
+          >
+            <option value="unverified">unverified</option>
+            <option value="pending">pending</option>
+            <option value="approved">approved</option>
+            <option value="expired">expired</option>
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          Terms URL
+          <input
+            name="termsUrl"
+            type="url"
+            defaultValue={state.values.termsUrl ?? ""}
+            className={inputClass}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm md:col-span-2">
+          Notes
+          <textarea
+            name="notes"
+            rows={3}
+            defaultValue={state.values.notes ?? ""}
+            className={inputClass}
+          />
+        </label>
+
+        <p className="text-sm text-muted md:col-span-2">
+          This only registers the provider. To import its games, an adapter for it must also exist
+          in the code.
+        </p>
+
+        {state.error && (
+          <p role="alert" className="text-sm text-danger md:col-span-2">
+            {state.error}
+          </p>
+        )}
+        {state.message && (
+          <p role="status" className="text-sm md:col-span-2">
+            {state.message}
+          </p>
+        )}
+
+        <div className="md:col-span-2">
+          <button
+            type="submit"
+            disabled={pending}
+            className="rounded-lg border border-border px-3 py-1.5 text-sm hover:border-brand disabled:opacity-60"
+          >
+            {pending ? "Adding..." : "Add provider"}
+          </button>
+        </div>
+      </form>
+    </details>
+  );
+}
+
+
+===== FILE: apps\admin\src\app\(dashboard)\providers\page.tsx =====
+import type { Metadata } from "next";
+import { requireAdmin } from "@/lib/auth";
+import { AddProviderForm } from "./AddProviderForm";
+import { disconnectProvider, reconnectProvider, updateProvider } from "@/lib/providers-actions";
+import { createSecretClient } from "@/lib/supabase/secret";
+
+export const metadata: Metadata = { title: "Providers" };
+
+const LICENSE_OPTIONS = ["unverified", "pending", "approved", "expired"] as const;
+
+type ProviderRow = {
+  provider: string;
+  display_name: string;
+  status: "active" | "disconnected";
+  license_status: (typeof LICENSE_OPTIONS)[number];
+  terms_url: string | null;
+  verified_at: string | null;
+  notes: string | null;
+  disconnected_at: string | null;
+  disconnect_reason: string | null;
+};
+
+async function countGames(provider: string, onlyPublished: boolean) {
+  const base = createSecretClient()
+    .from("games")
+    .select("id", { count: "exact", head: true })
+    .eq("provider", provider);
+
+  const { count, error } = await (onlyPublished ? base.eq("is_published", true) : base);
+  return error ? null : count;
+}
+
+function formatDate(value: string | null) {
+  return value ? new Date(value).toLocaleDateString("en-GB") : "-";
+}
+
+const inputClass = "rounded-lg border border-border bg-background px-3 py-2 text-sm";
+const buttonClass = "rounded-lg border border-border px-3 py-1.5 text-sm hover:border-brand";
+
+export default async function ProvidersPage() {
+  await requireAdmin();
+
+  const { data, error } = await createSecretClient()
+    .from("providers")
+    .select(
+      "provider, display_name, status, license_status, terms_url, verified_at, notes, disconnected_at, disconnect_reason",
+    )
+    .order("provider");
+
+  if (error) throw new Error(`providers failed: ${error.message}`);
+  const providers = (data ?? []) as ProviderRow[];
+
+  const counts = new Map<string, { live: number | null; total: number | null }>();
+  await Promise.all(
+    providers.map(async (p) => {
+      const [live, total] = await Promise.all([
+        countGames(p.provider, true),
+        countGames(p.provider, false),
+      ]);
+      counts.set(p.provider, { live, total });
+    }),
+  );
+
+  return (
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">Providers</h1>
+      <AddProviderForm />
+
+      {providers.length === 0 ? (
+        <p className="text-muted">No providers registered.</p>
+      ) : (
+        <ul className="flex flex-col gap-4">
+          {providers.map((p) => {
+            const count = counts.get(p.provider);
+
+            return (
+              <li
+                key={p.provider}
+                className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-lg font-bold">{p.display_name}</h2>
+                    <p className="text-sm text-muted">
+                      {p.provider} &middot; {count?.live ?? "-"} live / {count?.total ?? "-"} total
+                      games
+                    </p>
+                  </div>
+                  <span
+                    className={
+                      p.status === "active"
+                        ? "rounded-full border border-border px-3 py-1 text-sm"
+                        : "rounded-full border border-danger px-3 py-1 text-sm text-danger"
+                    }
+                  >
+                    {p.status}
+                  </span>
+                </div>
+
+                <form action={updateProvider} className="grid gap-3 md:grid-cols-2">
+                  <input type="hidden" name="provider" value={p.provider} />
+
+                  <label className="flex flex-col gap-1 text-sm">
+                    License status
+                    <select
+                      name="licenseStatus"
+                      defaultValue={p.license_status}
+                      className={inputClass}
+                    >
+                      {LICENSE_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="flex flex-col gap-1 text-sm">
+                    Terms URL
+                    <input
+                      name="termsUrl"
+                      type="url"
+                      defaultValue={p.terms_url ?? ""}
+                      className={inputClass}
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-1 text-sm md:col-span-2">
+                    Notes
+                    <textarea
+                      name="notes"
+                      rows={3}
+                      defaultValue={p.notes ?? ""}
+                      className={inputClass}
+                    />
+                  </label>
+
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="verifiedNow" />
+                    Mark as verified today (last verified: {formatDate(p.verified_at)})
+                  </label>
+
+                  <div className="md:col-span-2">
+                    <button type="submit" className={buttonClass}>
+                      Save
+                    </button>
+                  </div>
+                </form>
+
+                {p.status === "active" ? (
+                  <details className="rounded-xl border border-border p-3">
+                    <summary className="cursor-pointer text-sm font-medium text-danger">
+                      Disconnect provider...
+                    </summary>
+                    <form action={disconnectProvider} className="mt-3 flex flex-col gap-3">
+                      <input type="hidden" name="provider" value={p.provider} />
+                      <p className="text-sm">
+                        This unpublishes all {count?.live ?? "the"} live games of this provider
+                        immediately and blocks new imports and publishing.
+                      </p>
+                      <label className="flex flex-col gap-1 text-sm">
+                        Reason (optional)
+                        <input name="reason" maxLength={500} className={inputClass} />
+                      </label>
+                      <label className="flex flex-col gap-1 text-sm">
+                        Type <strong>{p.provider}</strong> to confirm
+                        <input
+                          name="confirm"
+                          required
+                          pattern={p.provider}
+                          autoComplete="off"
+                          className={inputClass}
+                        />
+                      </label>
+                      <div>
+                        <button type="submit" className={buttonClass + " text-danger"}>
+                          Disconnect
+                        </button>
+                      </div>
+                    </form>
+                  </details>
+                ) : (
+                  <div className="flex flex-col gap-2 rounded-xl border border-border p-3 text-sm">
+                    <p>
+                      Disconnected on {formatDate(p.disconnected_at)}
+                      {p.disconnect_reason ? `: ${p.disconnect_reason}` : "."}
+                    </p>
+                    <p className="text-muted">
+                      Reconnecting does not republish any games. Publish them one by one.
+                    </p>
+                    <form action={reconnectProvider}>
+                      <input type="hidden" name="provider" value={p.provider} />
+                      <button type="submit" className={buttonClass}>
+                        Reconnect
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+
+===== FILE: apps\admin\src\app\globals.css =====
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #14122b;
+  --surface: #f5f4fb;
+  --border: #e3e0f3;
+  --muted: #6b6890;
+  --brand: #5b4bdb;
+  --brand-foreground: #ffffff;
+  --danger: #c62828;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f0d1f;
+    --foreground: #f1f0fb;
+    --surface: #1a1733;
+    --border: #2d2a52;
+    --muted: #a19fc8;
+    --brand: #8b7cff;
+    --brand-foreground: #0f0d1f;
+    --danger: #ff8a80;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-danger: var(--danger);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, sans-serif;
+}
+
+
+===== FILE: apps\admin\src\app\layout.tsx =====
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: { default: "BerryBlue Admin", template: "%s | BerryBlue Admin" },
+  robots: { index: false, follow: false },
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+
+
+===== FILE: apps\admin\src\app\login\LoginForm.tsx =====
+"use client";
+
+import { useActionState } from "react";
+import { login, type LoginState } from "@/lib/auth-actions";
+
+const initialState: LoginState = { error: null };
+
+const inputClass = "rounded-lg border border-border bg-surface px-3 py-2";
+
+export function LoginForm() {
+  const [state, formAction, pending] = useActionState(login, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-4">
+      <label className="flex flex-col gap-1 text-sm">
+        Email
+        <input name="email" type="email" required autoComplete="username" className={inputClass} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Password
+        <input
+          name="password"
+          type="password"
+          required
+          autoComplete="current-password"
+          className={inputClass}
+        />
+      </label>
+
+      {state.error && (
+        <p role="alert" className="text-sm text-danger">
+          {state.error}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-lg bg-brand px-4 py-2 font-semibold text-brand-foreground disabled:opacity-60"
+      >
+        {pending ? "Logging in..." : "Login"}
+      </button>
+    </form>
+  );
+}
+
+
+===== FILE: apps\admin\src\app\login\page.tsx =====
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { getAdmin } from "@/lib/auth";
+import { logout } from "@/lib/auth-actions";
+import { LoginForm } from "./LoginForm";
+
+export const metadata: Metadata = { title: "Login" };
+
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function LoginPage({ searchParams }: { searchParams: SearchParams }) {
+  if (await getAdmin()) redirect("/overview");
+
+  const { error } = await searchParams;
+
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-4">
+      <h1 className="text-2xl font-bold">Admin login</h1>
+
+      {error === "forbidden" && (
+        <div
+          role="alert"
+          className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-3 text-sm"
+        >
+          <p>This account is not authorized as an admin.</p>
+          <form action={logout}>
+            <button type="submit" className="underline">
+              Sign out
+            </button>
+          </form>
+        </div>
+      )}
+
+      <LoginForm />
+    </main>
+  );
+}
+
+
+===== FILE: apps\admin\src\app\page.tsx =====
+import { redirect } from "next/navigation";
+
+export default function HomePage() {
+  redirect("/overview");
+}
+
+
+===== FILE: apps\admin\src\lib\auth.ts =====
+import "server-only";
+import { cache } from "react";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { createSecretClient } from "@/lib/supabase/secret";
+
+export type Admin = { id: string; email: string };
+
+export async function isAdminUser(userId: string): Promise<boolean> {
+  const { data, error } = await createSecretClient()
+    .from("admin_users")
+    .select("user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw new Error(`admin check failed: ${error.message}`);
+  return data !== null;
+}
+
+// getUser() verifies the token with Supabase Auth (never trust the cookie alone).
+const getAuth = cache(async () => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { user: null, isAdmin: false };
+  return { user, isAdmin: await isAdminUser(user.id) };
+});
+
+export async function getAdmin(): Promise<Admin | null> {
+  const { user, isAdmin } = await getAuth();
+  return user && isAdmin ? { id: user.id, email: user.email ?? "" } : null;
+}
+
+// First line of every page and Server Action: do not rely on the layout (it does not re-run on every navigation).
+export async function requireAdmin(): Promise<Admin> {
+  const { user, isAdmin } = await getAuth();
+
+  if (!user) redirect("/login");
+  if (!isAdmin) redirect("/login?error=forbidden");
+
+  return { id: user.id, email: user.email ?? "" };
+}
+
+
+===== FILE: apps\admin\src\lib\auth-actions.ts =====
+"use server";
+
+import { redirect } from "next/navigation";
+import { z } from "zod";
+import { isAdminUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+
+export type LoginState = { error: string | null };
+
+const loginSchema = z.object({ email: z.email(), password: z.string().min(1) });
+
+const LOGIN_FAILED = "Incorrect email or password, or this account is not an admin.";
+
+export async function login(_previous: LoginState, formData: FormData): Promise<LoginState> {
+  const parsed = loginSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) return { error: LOGIN_FAILED };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
+  if (error || !data.user) return { error: LOGIN_FAILED };
+
+  // Check with this user id instead of re-reading the cookie: the cookie just set may not be visible in this same request.
+  if (!(await isAdminUser(data.user.id))) {
+    await supabase.auth.signOut();
+    return { error: LOGIN_FAILED };
+  }
+
+  redirect("/overview");
+}
+
+export async function logout() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
+}
+
+
+===== FILE: apps\admin\src\lib\env.ts =====
+import { z } from "zod";
+
+const publicEnvSchema = z.object({
+  url: z.url(),
+  publishableKey: z.string().min(1),
+});
+
+// NEXT_PUBLIC_ variables must be written out by name, otherwise Next.js does not inline them.
+export function getPublicEnv() {
+  return publicEnvSchema.parse({
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    publishableKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  });
+}
+
+
+===== FILE: apps\admin\src\lib\games-actions.ts =====
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { requireAdmin } from "@/lib/auth";
+import { createSecretClient } from "@/lib/supabase/secret";
+
+const schema = z.object({
+  gameId: z.uuid(),
+  published: z.enum(["true", "false"]),
+});
+
+export async function setPublished(formData: FormData) {
+  // First line of every Server Action.
+  const admin = await requireAdmin();
+
+  const parsed = schema.safeParse({
+    gameId: formData.get("gameId"),
+    published: formData.get("published"),
+  });
+  if (!parsed.success) throw new Error("Invalid request.");
+
+  const { error } = await createSecretClient().rpc("set_game_published", {
+    p_game_id: parsed.data.gameId,
+    p_published: parsed.data.published === "true",
+    p_admin_id: admin.id,
+  });
+
+  // Refresh in every case so a stale list corrects itself.
+  revalidatePath("/games");
+  revalidatePath("/overview");
+
+  if (error) {
+    console.error("set_game_published failed:", error.message);
+    throw new Error("Could not update the game.");
+  }
+}
+
+
+===== FILE: apps\admin\src\lib\moderation.ts =====
+import "server-only";
+import { createSecretClient } from "@/lib/supabase/secret";
+
+export const STATUSES = ["pending", "invalid", "rejected", "approved"] as const;
+export type StagedStatus = (typeof STATUSES)[number];
+
+export type StagedGame = {
+  id: string;
+  provider: string;
+  provider_game_id: string;
+  slug: string | null;
+  title: string | null;
+  description: string | null;
+  thumbnail_url: string | null;
+  embed_url: string | null;
+  provider_category: string | null;
+  category_id: string | null;
+  tags: string[];
+  devices: string[];
+  status: StagedStatus;
+  validation_errors: unknown;
+  reviewed_at: string | null;
+  created_at: string;
+};
+
+export type Category = { id: string; slug: string; name: string };
+
+const COLUMNS =
+  "id, provider, provider_game_id, slug, title, description, thumbnail_url, embed_url, provider_category, category_id, tags, devices, status, validation_errors, reviewed_at, created_at";
+
+export async function listStaged(status: StagedStatus): Promise<StagedGame[]> {
+  const { data, error } = await createSecretClient()
+    .from("staged_games")
+    .select(COLUMNS)
+    .eq("status", status)
+    .order("created_at", { ascending: false })
+    .order("id")
+    .limit(200);
+
+  if (error) throw new Error(`listStaged failed: ${error.message}`);
+  return (data ?? []) as StagedGame[];
+}
+
+export async function getStaged(id: string): Promise<StagedGame | null> {
+  const { data, error } = await createSecretClient()
+    .from("staged_games")
+    .select(COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw new Error(`getStaged failed: ${error.message}`);
+  return (data as StagedGame | null) ?? null;
+}
+
+export async function listCategories(): Promise<Category[]> {
+  const { data, error } = await createSecretClient()
+    .from("categories")
+    .select("id, slug, name")
+    .order("name");
+
+  if (error) throw new Error(`listCategories failed: ${error.message}`);
+  return (data ?? []) as Category[];
+}
+
+// validation_errors is free-form JSON, so turn whatever is inside into readable lines.
+export function formatValidationErrors(value: unknown): string[] {
+  if (value === null || value === undefined) return [];
+
+  const one = (item: unknown): string => {
+    if (typeof item === "string") return item;
+    if (item && typeof item === "object") {
+      const o = item as { path?: unknown; message?: unknown };
+      if (typeof o.message === "string") {
+        const path = Array.isArray(o.path) ? o.path.join(".") : "";
+        return path ? `${path}: ${o.message}` : o.message;
+      }
+    }
+    return JSON.stringify(item);
+  };
+
+  if (Array.isArray(value)) return value.map(one);
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>).map(
+      ([key, v]) => `${key}: ${typeof v === "string" ? v : JSON.stringify(v)}`,
+    );
+  }
+  return [String(value)];
+}
+
+
+===== FILE: apps\admin\src\lib\moderation-actions.ts =====
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+import { requireAdmin } from "@/lib/auth";
+import { createSecretClient } from "@/lib/supabase/secret";
+
+export type ReviewState = { error: string | null };
+
+const approveSchema = z.object({
+  stagedId: z.uuid(),
+  categoryId: z.uuid({ error: "Choose a category before approving." }),
+  slug: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9-]+$/, "Slug can only have lowercase letters, numbers and dashes."),
+});
+
+const rejectSchema = z.object({
+  stagedId: z.uuid(),
+  reason: z.string().trim().max(500, "Reason is too long (max 500 characters).").optional(),
+});
+
+export async function approveGame(
+  _previous: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  // First line of every Server Action: never trust the page that called it.
+  const admin = await requireAdmin();
+
+  const parsed = approveSchema.safeParse({
+    stagedId: formData.get("stagedId"),
+    categoryId: formData.get("categoryId"),
+    slug: formData.get("slug"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
+  const { error } = await createSecretClient().rpc("approve_staged_game", {
+    p_staged_id: parsed.data.stagedId,
+    p_category_id: parsed.data.categoryId,
+    p_admin_id: admin.id,
+    p_slug: parsed.data.slug,
+  });
+
+  // The database function explains itself (for example: slug already used by another game).
+  if (error) return { error: error.message };
+
+  revalidatePath("/moderation");
+  revalidatePath("/overview");
+  redirect("/moderation");
+}
+
+export async function rejectGame(_previous: ReviewState, formData: FormData): Promise<ReviewState> {
+  const admin = await requireAdmin();
+
+  const parsed = rejectSchema.safeParse({
+    stagedId: formData.get("stagedId"),
+    reason: formData.get("reason") ?? undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
+  const { error } = await createSecretClient().rpc("reject_staged_game", {
+    p_staged_id: parsed.data.stagedId,
+    p_admin_id: admin.id,
+    p_reason: parsed.data.reason || null,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/moderation");
+  revalidatePath("/overview");
+  redirect("/moderation");
+}
+
+
+===== FILE: apps\admin\src\lib\providers-actions.ts =====
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { requireAdmin } from "@/lib/auth";
+import { createSecretClient } from "@/lib/supabase/secret";
+
+const providerSlug = z.string().regex(/^[a-z0-9-]+$/);
+
+const updateSchema = z.object({
+  provider: providerSlug,
+  licenseStatus: z.enum(["unverified", "pending", "approved", "expired"]),
+  termsUrl: z.union([z.literal(""), z.url()]),
+  notes: z.string().max(2000),
+  verifiedNow: z.boolean(),
+});
+
+export async function updateProvider(formData: FormData) {
+  // First line of every Server Action.
+  const admin = await requireAdmin();
+
+  const parsed = updateSchema.safeParse({
+    provider: formData.get("provider"),
+    licenseStatus: formData.get("licenseStatus"),
+    termsUrl: String(formData.get("termsUrl") ?? "").trim(),
+    notes: String(formData.get("notes") ?? "").trim(),
+    verifiedNow: formData.get("verifiedNow") === "on",
+  });
+  if (!parsed.success) throw new Error("Invalid request.");
+
+  const { provider, licenseStatus, termsUrl, notes, verifiedNow } = parsed.data;
+  const supabase = createSecretClient();
+
+  const changes: Record<string, unknown> = {
+    license_status: licenseStatus,
+    terms_url: termsUrl || null,
+    notes: notes || null,
+  };
+  if (verifiedNow) changes.verified_at = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from("providers")
+    .update(changes)
+    .eq("provider", provider)
+    .select("provider");
+
+  if (error || !data || data.length === 0) {
+    console.error("updateProvider failed:", error?.message ?? "provider not found");
+    throw new Error("Could not update the provider.");
+  }
+
+  const { error: auditError } = await supabase.from("audit_logs").insert({
+    admin_id: admin.id,
+    action: "provider.update",
+    entity_type: "provider",
+    details: { provider, license_status: licenseStatus, verified_now: verifiedNow },
+  });
+  if (auditError) {
+    console.error("audit log failed:", auditError.message);
+    throw new Error("The provider was updated, but the audit log entry failed.");
+  }
+
+  revalidatePath("/providers");
+}
+
+const disconnectSchema = z.object({
+  provider: providerSlug,
+  confirm: z.string(),
+  reason: z.string().max(500),
+});
+
+export async function disconnectProvider(formData: FormData) {
+  const admin = await requireAdmin();
+
+  const parsed = disconnectSchema.safeParse({
+    provider: formData.get("provider"),
+    confirm: String(formData.get("confirm") ?? "").trim(),
+    reason: String(formData.get("reason") ?? "").trim(),
+  });
+  if (!parsed.success || parsed.data.confirm !== parsed.data.provider) {
+    throw new Error("The confirmation text does not match the provider name.");
+  }
+
+  // One transaction in the database: provider off, its games unpublished, audit log written.
+  const { error } = await createSecretClient().rpc("disconnect_provider", {
+    p_provider: parsed.data.provider,
+    p_admin_id: admin.id,
+    p_reason: parsed.data.reason || null,
+  });
+
+  revalidatePath("/providers");
+  revalidatePath("/games");
+  revalidatePath("/overview");
+
+  if (error) {
+    console.error("disconnect_provider failed:", error.message);
+    throw new Error("Could not disconnect the provider.");
+  }
+}
+
+export async function reconnectProvider(formData: FormData) {
+  const admin = await requireAdmin();
+
+  const parsed = z.object({ provider: providerSlug }).safeParse({
+    provider: formData.get("provider"),
+  });
+  if (!parsed.success) throw new Error("Invalid request.");
+
+  const { error } = await createSecretClient().rpc("reconnect_provider", {
+    p_provider: parsed.data.provider,
+    p_admin_id: admin.id,
+  });
+
+  revalidatePath("/providers");
+
+  if (error) {
+    console.error("reconnect_provider failed:", error.message);
+    throw new Error("Could not reconnect the provider.");
+  }
+}
+export type CreateProviderState = {
+  error: string | null;
+  message: string | null;
+  values: Record<string, string>;
+};
+
+const createSchema = z.object({
+  provider: z
+    .string()
+    .regex(/^[a-z0-9-]+$/)
+    .min(2)
+    .max(40),
+  displayName: z.string().min(1).max(60),
+  licenseStatus: z.enum(["unverified", "pending", "approved", "expired"]),
+  termsUrl: z.union([z.literal(""), z.url()]),
+  notes: z.string().max(2000),
+});
+
+export async function createProvider(
+  _previous: CreateProviderState,
+  formData: FormData,
+): Promise<CreateProviderState> {
+  // First line of every Server Action.
+  const admin = await requireAdmin();
+
+  const values = {
+    provider: String(formData.get("provider") ?? "").trim(),
+    displayName: String(formData.get("displayName") ?? "").trim(),
+    licenseStatus: String(formData.get("licenseStatus") ?? "unverified"),
+    termsUrl: String(formData.get("termsUrl") ?? "").trim(),
+    notes: String(formData.get("notes") ?? "").trim(),
+  };
+
+  const parsed = createSchema.safeParse(values);
+  if (!parsed.success) {
+    return {
+      error:
+        "Check the fields. The provider id may only use lowercase letters, numbers and dashes (2-40 characters).",
+      message: null,
+      values,
+    };
+  }
+
+  const supabase = createSecretClient();
+  const { error } = await supabase.from("providers").insert({
+    provider: parsed.data.provider,
+    display_name: parsed.data.displayName,
+    license_status: parsed.data.licenseStatus,
+    terms_url: parsed.data.termsUrl || null,
+    notes: parsed.data.notes || null,
+  });
+
+  if (error) {
+    if (error.code === "23505") {
+      return { error: "A provider with this id already exists.", message: null, values };
+    }
+    console.error("createProvider failed:", error.message);
+    return { error: "Could not add the provider.", message: null, values };
+  }
+
+  const { error: auditError } = await supabase.from("audit_logs").insert({
+    admin_id: admin.id,
+    action: "provider.create",
+    entity_type: "provider",
+    details: { provider: parsed.data.provider, license_status: parsed.data.licenseStatus },
+  });
+
+  revalidatePath("/providers");
+
+  if (auditError) {
+    console.error("audit log failed:", auditError.message);
+    return {
+      error: "The provider was added, but the audit log entry failed.",
+      message: null,
+      values: {},
+    };
+  }
+
+  return { error: null, message: `Provider "${parsed.data.provider}" added.`, values: {} };
+}
+
+
+===== FILE: apps\admin\src\lib\supabase\secret.ts =====
+import "server-only";
+import { createClient } from "@supabase/supabase-js";
+
+// The secret key bypasses RLS. Because of "server-only", the build fails if this file is ever
+// imported into browser code.
+export function createSecretClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+
+  if (!url || !key) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY must be set in apps/admin/.env.local",
+    );
+  }
+
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+
+===== FILE: apps\admin\src\lib\supabase\server.ts =====
+import "server-only";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { getPublicEnv } from "@/lib/env";
+
+// Client for the signed-in user (uses cookies). Only used to find out who is signed in.
+export async function createClient() {
+  const cookieStore = await cookies();
+  const { url, publishableKey } = getPublicEnv();
+
+  return createServerClient(url, publishableKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        try {
+          for (const { name, value, options } of cookiesToSet) {
+            cookieStore.set(name, value, options);
+          }
+        } catch {
+          // Server Components cannot set cookies; proxy.ts refreshes the session.
+        }
+      },
+    },
+  });
+}
+
+
+===== FILE: apps\admin\src\proxy.ts =====
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+import { getPublicEnv } from "@/lib/env";
+
+export async function proxy(request: NextRequest) {
+  let response = NextResponse.next({ request });
+  const { url, publishableKey } = getPublicEnv();
+
+  const supabase = createServerClient(url, publishableKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        for (const { name, value } of cookiesToSet) request.cookies.set(name, value);
+        response = NextResponse.next({ request });
+        for (const { name, value, options } of cookiesToSet)
+          response.cookies.set(name, value, options);
+      },
+    },
+  });
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user && request.nextUrl.pathname !== "/login") {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.search = "";
+    const redirectResponse = NextResponse.redirect(loginUrl);
+    for (const cookie of response.cookies.getAll()) redirectResponse.cookies.set(cookie);
+    return redirectResponse;
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+};
+
+
+===== FILE: apps\worker\package.json =====
+{
+  "name": "@berryblue/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "import-catalog": "tsx --env-file=.env src/import.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@berryblue/provider-core": "workspace:*",
+    "@berryblue/provider-self-hosted": "workspace:*",
+    "@berryblue/shared": "workspace:*",
+    "@supabase/supabase-js": "^2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3"
+  }
+}
+
+
+===== FILE: apps\worker\src\import.ts =====
+import { runImport, type ProviderAdapter } from "@berryblue/provider-core";
+import { createSelfHostedAdapter } from "@berryblue/provider-self-hosted";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createSecretClient } from "./supabase";
+import { createSupabaseStagingStore } from "./staging-store";
+
+// When a new provider is added, only one line is added here.
+const adapters: Record<string, () => ProviderAdapter> = {
+  "self-hosted": () => createSelfHostedAdapter(),
+};
+
+async function assertProviderActive(supabase: SupabaseClient, provider: string) {
+  const { data, error } = await supabase
+    .from("providers")
+    .select("status")
+    .eq("provider", provider)
+    .maybeSingle();
+
+  if (error) throw new Error(`Could not check provider "${provider}": ${error.message}`);
+  if (!data) throw new Error(`Provider "${provider}" is not registered in the providers table.`);
+  if (data.status !== "active") {
+    throw new Error(
+      `Provider "${provider}" is ${data.status}. Imports are blocked until it is reconnected.`,
+    );
+  }
+}
+
+async function main() {
+  const name = process.argv[2] ?? "self-hosted";
+  const makeAdapter = adapters[name];
+
+  if (!makeAdapter) {
+    console.error(`Unknown provider "${name}". Available: ${Object.keys(adapters).join(", ")}`);
+    process.exit(1);
+  }
+
+  const supabase = createSecretClient();
+  await assertProviderActive(supabase, name);
+
+  const store = createSupabaseStagingStore(supabase);
+  const result = await runImport(makeAdapter(), store);
+
+  console.log(`Import finished (batch ${result.batchId})`);
+  console.table(result.stats);
+
+  if (result.skipped.length > 0) {
+    console.log("Skipped before staging:");
+    console.table(result.skipped);
+  }
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+
+
+===== FILE: apps\worker\src\staging-store.ts =====
+import type { ImportStats, StagingStore } from "@berryblue/provider-core";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+const PAGE_SIZE = 1000; // Supabase ek baar mein itni hi rows deta hai
+const INSERT_CHUNK = 200;
+
+// core ka StagingStore interface, asli Supabase database ke saath.
+export function createSupabaseStagingStore(supabase: SupabaseClient): StagingStore {
+  return {
+    async startBatch(provider) {
+      const { data, error } = await supabase
+        .from("import_batches")
+        .insert({ provider })
+        .select("id")
+        .single();
+
+      if (error) throw new Error(`startBatch failed: ${error.message}`);
+      return data.id as string;
+    },
+
+    async getKnownHashes(provider) {
+      const known = new Map<string, Set<string>>();
+
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from("staged_games")
+          .select("provider_game_id, content_hash")
+          .eq("provider", provider)
+          .order("id")
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) throw new Error(`getKnownHashes failed: ${error.message}`);
+
+        for (const row of data) {
+          const hashes = known.get(row.provider_game_id) ?? new Set<string>();
+          hashes.add(row.content_hash);
+          known.set(row.provider_game_id, hashes);
+        }
+
+        if (data.length < PAGE_SIZE) break;
+      }
+
+      return known;
+    },
+
+    async getCategoryMappings(provider) {
+      const { data, error } = await supabase
+        .from("category_mappings")
+        .select("provider_category, category_id")
+        .eq("provider", provider);
+
+      if (error) throw new Error(`getCategoryMappings failed: ${error.message}`);
+
+      return new Map<string, string>(
+        data.map((row): [string, string] => [row.provider_category, row.category_id]),
+      );
+    },
+
+    async insertStaged(batchId, rows) {
+      for (let i = 0; i < rows.length; i += INSERT_CHUNK) {
+        const chunk = rows.slice(i, i + INSERT_CHUNK).map((row) => ({
+          batch_id: batchId,
+          provider: row.provider,
+          provider_game_id: row.providerGameId,
+          raw: row.raw,
+          slug: row.slug ?? null,
+          title: row.title ?? null,
+          description: row.description ?? null,
+          thumbnail_url: row.thumbnailUrl ?? null,
+          embed_url: row.embedUrl ?? null,
+          provider_category: row.providerCategory ?? null,
+          category_id: row.categoryId ?? null,
+          tags: row.tags,
+          devices: row.devices,
+          content_hash: row.contentHash,
+          status: row.status,
+          validation_errors: row.validationErrors,
+        }));
+
+        // Wohi (provider, id, hash) pehle se ho to khamoshi se chhod do.
+        const { error } = await supabase.from("staged_games").upsert(chunk, {
+          onConflict: "provider,provider_game_id,content_hash",
+          ignoreDuplicates: true,
+        });
+
+        if (error) throw new Error(`insertStaged failed: ${error.message}`);
+      }
+    },
+
+    async finishBatch(batchId, stats: ImportStats) {
+      const { error } = await supabase
+        .from("import_batches")
+        .update({
+          status: "completed",
+          finished_at: new Date().toISOString(),
+          total_count: stats.total,
+          new_count: stats.newCount,
+          changed_count: stats.changedCount,
+          unchanged_count: stats.unchangedCount,
+          invalid_count: stats.invalidCount,
+        })
+        .eq("id", batchId);
+
+      if (error) throw new Error(`finishBatch failed: ${error.message}`);
+    },
+
+    async failBatch(batchId, message) {
+      const { error } = await supabase
+        .from("import_batches")
+        .update({ status: "failed", finished_at: new Date().toISOString(), error: message })
+        .eq("id", batchId);
+
+      // Yahan throw nahi: asli error pehle hi upar jaa raha hai, usay chhupana nahi.
+      if (error) console.error(`failBatch failed: ${error.message}`);
+    },
+  };
+}
+
+
+===== FILE: apps\worker\src\supabase.ts =====
+import { createClient } from "@supabase/supabase-js";
+
+// Secret key RLS ko bypass karti hai: sirf server-side scripts mein, kabhi browser ya NEXT_PUBLIC_ mein nahi.
+export function createSecretClient() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+
+  if (!url || !key) {
+    throw new Error("SUPABASE_URL and SUPABASE_SECRET_KEY must be set in apps/worker/.env");
+  }
+
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+
+===== FILE: package.json =====
+{
+  "name": "berryblue",
+  "private": true,
+  "packageManager": "pnpm@12.21.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.1",
+    "prettier": "^3.10.1",
+    "turbo": "^2.11.11"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,json,css,md,yml,yaml}": "prettier --write"
+  }
+}
+
+
+===== FILE: packages\providers\core\src\hash.ts =====
+// Keys ki tarteeb se qata nazar ek hi data ka ek hi text banata hai.
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+
+  if (Array.isArray(value)) return "[" + value.map(stableStringify).join(",") + "]";
+
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, v]) => v !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([k, v]) => JSON.stringify(k) + ":" + stableStringify(v));
+
+  return "{" + entries.join(",") + "}";
+}
+
+// SHA-256 fingerprint: provider ka data badle to hash badalta hai, warna wahi rehta hai.
+export async function contentHash(value: unknown): Promise<string> {
+  const bytes = new TextEncoder().encode(stableStringify(value));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+
+===== FILE: packages\providers\core\src\index.ts =====
+export * from "./hash";
+export * from "./normalize";
+export * from "./run-import";
+export * from "./types";
+export * from "./validate";
+
+
+===== FILE: packages\providers\core\src\normalize.ts =====
+// Normalizes a provider category (lowercase, single spaces). category_mappings stores this same form.
+export function normalizeProviderCategory(value: string | undefined): string | undefined {
+  const normalized = value?.replace(/\s+/g, " ").trim().toLowerCase();
+  return normalized ? normalized : undefined;
+}
+
+
+===== FILE: packages\providers\core\src\run-import.ts =====
+import { contentHash } from "./hash";
+import { normalizeProviderCategory } from "./normalize";
+import type { ImportStats, ProviderAdapter, StagedRow, StagingStore } from "./types";
+import { validateDraft } from "./validate";
+
+export type ImportResult = {
+  batchId: string;
+  stats: ImportStats;
+  // Woh games jo staging tak pohonch hi nahi sake (adapter ne throw kiya ya id nahi thi).
+  skipped: { index: number; reason: string }[];
+};
+
+export async function runImport(
+  adapter: ProviderAdapter,
+  store: StagingStore,
+): Promise<ImportResult> {
+  const batchId = await store.startBatch(adapter.provider);
+
+  const stats: ImportStats = {
+    total: 0,
+    newCount: 0,
+    changedCount: 0,
+    unchangedCount: 0,
+    invalidCount: 0,
+  };
+  const skipped: ImportResult["skipped"] = [];
+
+  try {
+    const catalog = await adapter.fetchCatalog();
+    const known = await store.getKnownHashes(adapter.provider);
+    const categoryMap = await store.getCategoryMappings(adapter.provider);
+    const seenInFeed = new Set<string>();
+    const rows: StagedRow[] = [];
+
+    for (const [index, raw] of catalog.entries()) {
+      stats.total += 1;
+
+      let draft;
+      try {
+        draft = adapter.toInternal(raw);
+      } catch (error) {
+        stats.invalidCount += 1;
+        skipped.push({ index, reason: error instanceof Error ? error.message : String(error) });
+        continue;
+      }
+
+      if (!draft.providerGameId) {
+        stats.invalidCount += 1;
+        skipped.push({ index, reason: "providerGameId missing" });
+        continue;
+      }
+
+      const hash = await contentHash(raw);
+      const key = draft.providerGameId + ":" + hash;
+
+      // Wohi game feed mein do baar aaye, ya pehle hi staging mein hai: dobara nahi.
+      const hashes = known.get(draft.providerGameId);
+      if (seenInFeed.has(key) || hashes?.has(hash)) {
+        stats.unchangedCount += 1;
+        continue;
+      }
+      seenInFeed.add(key);
+
+      if (hashes === undefined) stats.newCount += 1;
+      else stats.changedCount += 1;
+
+      const base = {
+        provider: adapter.provider,
+        providerGameId: draft.providerGameId,
+        raw,
+        providerCategory: draft.providerCategory,
+        categoryId:
+          categoryMap.get(normalizeProviderCategory(draft.providerCategory) ?? "") ?? null,
+        contentHash: hash,
+      };
+
+      const validation = validateDraft(draft);
+
+      if (validation.ok) {
+        rows.push({ ...base, ...validation.data, status: "pending", validationErrors: null });
+      } else {
+        stats.invalidCount += 1;
+        rows.push({
+          ...base,
+          slug: draft.slug,
+          title: draft.title,
+          description: draft.description,
+          thumbnailUrl: draft.thumbnailUrl,
+          embedUrl: draft.embedUrl,
+          tags: draft.tags ?? [],
+          devices: draft.devices ?? [],
+          status: "invalid",
+          validationErrors: validation.errors,
+        });
+      }
+    }
+
+    if (rows.length > 0) await store.insertStaged(batchId, rows);
+    await store.finishBatch(batchId, stats);
+
+    return { batchId, stats, skipped };
+  } catch (error) {
+    await store.failBatch(batchId, error instanceof Error ? error.message : String(error));
+    throw error;
+  }
+}
+
+
+===== FILE: packages\providers\core\src\types.ts =====
+import type { Provider } from "@berryblue/shared";
+
+// Adapter ka kaam: provider ka kaccha data hamari shakal ke qareeb laana.
+// Sahi ya ghalat hone ka faisla core karta hai (validate.ts), adapter nahi.
+export type GameDraft = {
+  providerGameId: string;
+  slug?: string;
+  title?: string;
+  description?: string;
+  thumbnailUrl?: string;
+  embedUrl?: string;
+  providerCategory?: string;
+  tags?: string[];
+  devices?: string[];
+};
+
+export interface ProviderAdapter {
+  readonly provider: Provider;
+  // Provider se poori list (kaccha data, jaisa aaya).
+  fetchCatalog(): Promise<unknown[]>;
+  // Ek kaccha game ko GameDraft mein badalna. Ghalat data par throw kar sakta hai.
+  toInternal(raw: unknown): GameDraft;
+}
+
+export type StagedStatus = "pending" | "invalid";
+
+// staged_games table ki ek row (camelCase). category_id review par tay hoti hai, yahan nahi.
+export type StagedRow = {
+  provider: Provider;
+  providerGameId: string;
+  raw: unknown;
+  slug?: string;
+  title?: string;
+  description?: string;
+  thumbnailUrl?: string;
+  embedUrl?: string;
+  providerCategory?: string;
+  tags: string[];
+  devices: string[];
+  contentHash: string;
+  categoryId?: string | null;
+  status: StagedStatus;
+  validationErrors: { path: string; message: string }[] | null;
+};
+
+export type ImportStats = {
+  total: number;
+  newCount: number;
+  changedCount: number;
+  unchangedCount: number;
+  // invalid = staging mein "invalid" bani rows + woh jo staging tak pohonch hi nahi sakin.
+  invalidCount: number;
+};
+
+// Core ko database ka pata nahi: asli Supabase wala hissa alag likha jayega.
+export interface StagingStore {
+  startBatch(provider: Provider): Promise<string>;
+  // providerGameId -> ab tak dekhe gaye hashes (staged_games se).
+  getKnownHashes(provider: Provider): Promise<Map<string, Set<string>>>;
+  // normalized provider category -> our category_id.
+  getCategoryMappings(provider: Provider): Promise<Map<string, string>>;
+  // normalized provider category -> hamari category_id.
+  getCategoryMappings(provider: Provider): Promise<Map<string, string>>;
+  // Duplicate (provider, provider_game_id, content_hash) khamoshi se chhod dena chahiye.
+  insertStaged(batchId: string, rows: StagedRow[]): Promise<void>;
+  finishBatch(batchId: string, stats: ImportStats): Promise<void>;
+  failBatch(batchId: string, error: string): Promise<void>;
+}
+
+
+===== FILE: packages\providers\core\src\validate.ts =====
+import { deviceSchema, urlOrPathSchema } from "@berryblue/shared";
+import { z } from "zod";
+import type { GameDraft } from "./types";
+
+// Wohi rules jo live catalog (gameSchema) ke hain, magar id/category/createdAt ke bagair.
+const validGameSchema = z.object({
+  slug: z
+    .string()
+    .regex(/^[a-z0-9-]+$/, "lowercase letters, numbers and dashes only")
+    .max(100),
+  title: z.string().trim().min(1).max(100),
+  description: z.string().max(2000).default(""),
+  thumbnailUrl: urlOrPathSchema,
+  embedUrl: urlOrPathSchema,
+  tags: z.array(z.string().min(1)).default([]),
+  devices: z.array(deviceSchema).min(1),
+});
+
+export type ValidGame = z.output<typeof validGameSchema>;
+export type ValidationIssue = { path: string; message: string };
+
+export type ValidationResult =
+  { ok: true; data: ValidGame } | { ok: false; errors: ValidationIssue[] };
+
+export function validateDraft(draft: GameDraft): ValidationResult {
+  const result = validGameSchema.safeParse(draft);
+
+  if (result.success) return { ok: true, data: result.data };
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      message: issue.message,
+    })),
+  };
+}
+
+
+===== FILE: packages\shared\src\category.ts =====
+import { z } from "zod";
+
+export const categorySchema = z.object({
+  id: z.uuid(),
+  slug: z.string().regex(/^[a-z0-9-]+$/),
+  name: z.string().min(1).max(60),
+});
+
+export type Category = z.infer<typeof categorySchema>;
+
+
+===== FILE: packages\shared\src\game.ts =====
+import { z } from "zod";
+
+export const deviceSchema = z.enum(["mobile", "tablet", "desktop"]);
+
+export const providerSchema = z
+  .string()
+  .regex(/^[a-z0-9-]+$/, "lowercase letters, numbers and dashes only")
+  .min(2)
+  .max(40);
+
+// Poora URL (https://...) ya apni site ka raasta (/thumbs/x.svg).
+export const urlOrPathSchema = z.union([
+  z.url(),
+  z.string().regex(/^\/\S*$/, "must be a URL or a path starting with /"),
+]);
+
+export const gameSchema = z.object({
+  id: z.uuid(),
+  slug: z.string().regex(/^[a-z0-9-]+$/, "lowercase letters, numbers and dashes only"),
+  title: z.string().min(1).max(100),
+  description: z.string().max(2000).default(""),
+  thumbnailUrl: urlOrPathSchema,
+  embedUrl: urlOrPathSchema,
+  categorySlug: z.string().min(1),
+  tags: z.array(z.string()).default([]),
+  devices: z.array(deviceSchema).min(1),
+  provider: providerSchema,
+  // Postgres "+00:00" jaisa offset bhejta hai, sirf "Z" nahi.
+  createdAt: z.iso.datetime({ offset: true }),
+});
+
+export type Game = z.infer<typeof gameSchema>;
+export type Device = z.infer<typeof deviceSchema>;
+export type Provider = z.infer<typeof providerSchema>;
+
+
+===== FILE: packages\shared\src\index.ts =====
+export * from "./game";
+export * from "./category";
+
+
+===== FILE: pnpm-workspace.yaml =====
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "packages/providers/*"
+
+allowBuilds:
+  esbuild: true
+  sharp: false
+  unrs-resolver: false
+
+
+===== FILE: supabase\migrations\20261122000000_add_game_stats.sql =====
+-- BerryBlue: play counts and trending score for Popular / Trending shelves
+
+alter table public.games
+  add column play_count integer not null default 0 check (play_count >= 0),
+  add column trending_score integer not null default 0 check (trending_score >= 0);
+
+create index games_play_count_idx on public.games (play_count desc);
+create index games_trending_score_idx on public.games (trending_score desc);
+
+===== FILE: supabase\migrations\20261122000001_grant_privileges.sql =====
+-- Table privileges (RLS decides which rows each role can see or change).
+grant usage on schema public to anon, authenticated;
+
+-- Public catalogue: read only.
+grant select on public.categories to anon, authenticated;
+grant select on public.games to anon, authenticated;
+
+-- Profiles: everyone can read, signed-in users can write (RLS limits it to their own row).
+grant select on public.profiles to anon, authenticated;
+grant insert, update on public.profiles to authenticated;
+
+-- Server-side admin (secret key) needs full access later.
+grant all on public.categories, public.games, public.profiles to service_role;
+
+===== FILE: supabase\migrations\20261123000000_provider_pipeline.sql =====
+-- Phase 3A: provider import pipeline (staging tables, admin list, games ke naye columns).
+
+alter table public.games
+  add column provider_game_id text,
+  add column content_hash text,
+  add column updated_at timestamptz not null default now();
+
+update public.games set provider_game_id = slug where provider_game_id is null;
+
+alter table public.games alter column provider_game_id set not null;
+
+alter table public.games
+  add constraint games_provider_game_unique unique (provider, provider_game_id);
+
+alter table public.games alter column is_published set default false;
+
+create function public.games_default_provider_game_id()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.provider_game_id := coalesce(new.provider_game_id, new.slug);
+  return new;
+end;
+$$;
+
+create trigger games_default_provider_game_id
+  before insert on public.games
+  for each row execute function public.games_default_provider_game_id();
+
+create function public.set_updated_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+create trigger games_set_updated_at
+  before update on public.games
+  for each row execute function public.set_updated_at();
+
+create table public.import_batches (
+  id uuid primary key default gen_random_uuid(),
+  provider text not null,
+  status text not null default 'running'
+    check (status in ('running', 'completed', 'failed')),
+  started_at timestamptz not null default now(),
+  finished_at timestamptz,
+  total_count integer not null default 0,
+  new_count integer not null default 0,
+  changed_count integer not null default 0,
+  unchanged_count integer not null default 0,
+  invalid_count integer not null default 0,
+  error text
+);
+
+create table public.staged_games (
+  id uuid primary key default gen_random_uuid(),
+  batch_id uuid not null references public.import_batches (id) on delete cascade,
+  provider text not null,
+  provider_game_id text not null,
+  raw jsonb not null,
+  slug text,
+  title text,
+  description text,
+  thumbnail_url text,
+  embed_url text,
+  provider_category text,
+  category_id uuid references public.categories (id),
+  tags text[] not null default '{}',
+  devices text[] not null default '{}',
+  content_hash text not null,
+  status text not null default 'pending'
+    check (status in ('pending', 'approved', 'rejected', 'invalid')),
+  validation_errors jsonb,
+  reviewed_by uuid references auth.users (id) on delete set null,
+  reviewed_at timestamptz,
+  created_at timestamptz not null default now(),
+  constraint staged_games_unique unique (provider, provider_game_id, content_hash)
+);
+
+create index staged_games_status_idx on public.staged_games (status);
+create index staged_games_batch_idx on public.staged_games (batch_id);
+
+create table public.admin_users (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+alter table public.import_batches enable row level security;
+alter table public.staged_games enable row level security;
+alter table public.admin_users enable row level security;
+
+revoke all on public.import_batches, public.staged_games, public.admin_users
+  from anon, authenticated;
+
+grant all on public.import_batches, public.staged_games, public.admin_users
+  to service_role;
+
+===== FILE: supabase\migrations\20261124000000_admin_review.sql =====
+-- Phase 3B: audit log aur admin review functions (approve / reject).
+
+create table public.audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  admin_id uuid references auth.users (id) on delete set null,
+  action text not null,
+  entity_type text not null,
+  entity_id uuid,
+  details jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index audit_logs_created_idx on public.audit_logs (created_at desc);
+
+alter table public.audit_logs enable row level security;
+revoke all on public.audit_logs from anon, authenticated;
+grant all on public.audit_logs to service_role;
+
+-- Approve = game live (insert ya update), staged row "approved", audit log: sab ek transaction mein.
+create function public.approve_staged_game(
+  p_staged_id uuid,
+  p_category_id uuid,
+  p_admin_id uuid,
+  p_slug text default null
+)
+returns uuid
+language plpgsql
+set search_path = ''
+as $$
+declare
+  s public.staged_games%rowtype;
+  v_slug text;
+  v_game_id uuid;
+begin
+  select * into s from public.staged_games where id = p_staged_id for update;
+
+  if not found then
+    raise exception 'staged game not found';
+  end if;
+  if s.status <> 'pending' then
+    raise exception 'only pending games can be approved (current status: %)', s.status;
+  end if;
+  if not exists (select 1 from public.categories where id = p_category_id) then
+    raise exception 'category not found';
+  end if;
+
+  v_slug := coalesce(nullif(btrim(p_slug), ''), s.slug);
+  if v_slug is null or v_slug !~ '^[a-z0-9-]+$' then
+    raise exception 'invalid slug';
+  end if;
+
+  -- Takraav: yeh slug kisi AUR game ka hai (wohi provider + wohi id ho to woh update hai, takraav nahi).
+  if exists (
+    select 1 from public.games g
+    where g.slug = v_slug
+      and not (g.provider = s.provider and g.provider_game_id = s.provider_game_id)
+  ) then
+    raise exception 'slug "%" is already used by another game', v_slug;
+  end if;
+
+  insert into public.games (
+    slug, title, description, thumbnail_url, embed_url, category_id,
+    tags, devices, provider, provider_game_id, content_hash, is_published
+  )
+  values (
+    v_slug, s.title, s.description, s.thumbnail_url, s.embed_url, p_category_id,
+    s.tags, s.devices, s.provider, s.provider_game_id, s.content_hash, true
+  )
+  on conflict (provider, provider_game_id) do update set
+    slug = excluded.slug,
+    title = excluded.title,
+    description = excluded.description,
+    thumbnail_url = excluded.thumbnail_url,
+    embed_url = excluded.embed_url,
+    category_id = excluded.category_id,
+    tags = excluded.tags,
+    devices = excluded.devices,
+    content_hash = excluded.content_hash,
+    is_published = true
+  returning id into v_game_id;
+
+  update public.staged_games
+  set status = 'approved',
+      slug = v_slug,
+      category_id = p_category_id,
+      reviewed_by = p_admin_id,
+      reviewed_at = now()
+  where id = p_staged_id;
+
+  insert into public.audit_logs (admin_id, action, entity_type, entity_id, details)
+  values (
+    p_admin_id, 'game.approve', 'game', v_game_id,
+    jsonb_build_object('staged_id', p_staged_id, 'slug', v_slug, 'provider', s.provider)
+  );
+
+  return v_game_id;
+end;
+$$;
+
+create function public.reject_staged_game(
+  p_staged_id uuid,
+  p_admin_id uuid,
+  p_reason text default null
+)
+returns void
+language plpgsql
+set search_path = ''
+as $$
+begin
+  update public.staged_games
+  set status = 'rejected', reviewed_by = p_admin_id, reviewed_at = now()
+  where id = p_staged_id and status = 'pending';
+
+  if not found then
+    raise exception 'only pending games can be rejected';
+  end if;
+
+  insert into public.audit_logs (admin_id, action, entity_type, entity_id, details)
+  values (
+    p_admin_id, 'game.reject', 'staged_game', p_staged_id,
+    jsonb_build_object('reason', p_reason)
+  );
+end;
+$$;
+
+-- Sirf server (secret key) in functions ko chala sakta hai. Supabase naye functions anon/authenticated ko
+-- bhi de deta hai, is liye teeno se explicitly wapas liya.
+revoke execute on function public.approve_staged_game(uuid, uuid, uuid, text) from public, anon, authenticated;
+revoke execute on function public.reject_staged_game(uuid, uuid, text) from public, anon, authenticated;
+grant execute on function public.approve_staged_game(uuid, uuid, uuid, text) to service_role;
+grant execute on function public.reject_staged_game(uuid, uuid, text) to service_role;
+
+===== FILE: supabase\migrations\20261124010000_set_game_published.sql =====
+-- Phase 3B: publish / unpublish a live game, with an audit log entry, in one transaction.
+create function public.set_game_published(
+  p_game_id uuid,
+  p_published boolean,
+  p_admin_id uuid
+)
+returns void
+language plpgsql
+set search_path = ''
+as $$
+begin
+  update public.games
+  set is_published = p_published
+  where id = p_game_id and is_published is distinct from p_published;
+
+  if not found then
+    raise exception 'game not found, or it is already in that state';
+  end if;
+
+  insert into public.audit_logs (admin_id, action, entity_type, entity_id, details)
+  values (
+    p_admin_id,
+    case when p_published then 'game.publish' else 'game.unpublish' end,
+    'game',
+    p_game_id,
+    '{}'::jsonb
+  );
+end;
+$$;
+
+revoke execute on function public.set_game_published(uuid, boolean, uuid) from public, anon, authenticated;
+grant execute on function public.set_game_published(uuid, boolean, uuid) to service_role;
+
+notify pgrst, 'reload schema';
+
+===== FILE: supabase\migrations\20261125000000_providers.sql =====
+-- Phase 3C-1: providers register, publish guard, disconnect / reconnect.
+
+create table public.providers (
+  provider text primary key check (provider ~ '^[a-z0-9-]+$'),
+  display_name text not null,
+  status text not null default 'active' check (status in ('active', 'disconnected')),
+  license_status text not null default 'unverified'
+    check (license_status in ('unverified', 'pending', 'approved', 'expired')),
+  terms_url text,
+  verified_at timestamptz,
+  notes text,
+  disconnected_at timestamptz,
+  disconnect_reason text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create trigger providers_set_updated_at
+  before update on public.providers
+  for each row execute function public.set_updated_at();
+
+alter table public.providers enable row level security;
+revoke all on public.providers from anon, authenticated;
+grant all on public.providers to service_role;
+
+-- Hamare apne test games (provider = 'self-hosted').
+insert into public.providers (provider, display_name, license_status, verified_at)
+values ('self-hosted', 'Self-hosted', 'approved', now());
+
+-- Guard: published game ka provider registered aur active hona zaroori hai.
+create function public.games_require_active_provider()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.is_published and not exists (
+    select 1 from public.providers p
+    where p.provider = new.provider and p.status = 'active'
+  ) then
+    raise exception 'provider "%" is not registered or not active', new.provider;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger games_require_active_provider
+  before insert or update of is_published on public.games
+  for each row execute function public.games_require_active_provider();
+
+-- Disconnect: provider band + uske saare games unpublish + audit log, ek transaction mein.
+create function public.disconnect_provider(
+  p_provider text,
+  p_admin_id uuid,
+  p_reason text default null
+)
+returns integer
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_unpublished integer;
+begin
+  update public.providers
+  set status = 'disconnected', disconnected_at = now(), disconnect_reason = p_reason
+  where provider = p_provider and status = 'active';
+
+  if not found then
+    raise exception 'provider is not active or does not exist';
+  end if;
+
+  update public.games set is_published = false
+  where provider = p_provider and is_published;
+  get diagnostics v_unpublished = row_count;
+
+  insert into public.audit_logs (admin_id, action, entity_type, entity_id, details)
+  values (
+    p_admin_id, 'provider.disconnect', 'provider', null,
+    jsonb_build_object('provider', p_provider, 'reason', p_reason, 'unpublished_games', v_unpublished)
+  );
+
+  return v_unpublished;
+end;
+$$;
+
+-- Reconnect: sirf provider wapas active. Games khud republish nahi hote.
+create function public.reconnect_provider(p_provider text, p_admin_id uuid)
+returns void
+language plpgsql
+set search_path = ''
+as $$
+begin
+  update public.providers
+  set status = 'active', disconnected_at = null, disconnect_reason = null
+  where provider = p_provider and status = 'disconnected';
+
+  if not found then
+    raise exception 'provider is not disconnected or does not exist';
+  end if;
+
+  insert into public.audit_logs (admin_id, action, entity_type, entity_id, details)
+  values (p_admin_id, 'provider.reconnect', 'provider', null, jsonb_build_object('provider', p_provider));
+end;
+$$;
+
+revoke execute on function public.disconnect_provider(text, uuid, text) from public, anon, authenticated;
+revoke execute on function public.reconnect_provider(text, uuid) from public, anon, authenticated;
+grant execute on function public.disconnect_provider(text, uuid, text) to service_role;
+grant execute on function public.reconnect_provider(text, uuid) to service_role;
+
+===== FILE: supabase\migrations\20261125010000_mappings.sql =====
+-- Phase 3C-2: category and tag mappings.
+
+-- Provider ki category -> hamari category. provider_category normalized hoti hai (lowercase, ek space).
+create table public.category_mappings (
+  provider text not null references public.providers (provider) on delete cascade,
+  provider_category text not null
+    check (provider_category <> '' and provider_category = lower(btrim(provider_category))),
+  category_id uuid not null references public.categories (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (provider, provider_category)
+);
+
+-- Provider ka tag -> hamara tag. our_tag null ka matlab: yeh tag hata do.
+create table public.tag_mappings (
+  provider text not null references public.providers (provider) on delete cascade,
+  provider_tag text not null check (provider_tag ~ '^[a-z0-9-]+$'),
+  our_tag text check (our_tag is null or our_tag ~ '^[a-z0-9-]+$'),
+  created_at timestamptz not null default now(),
+  primary key (provider, provider_tag)
+);
+
+alter table public.category_mappings enable row level security;
+alter table public.tag_mappings enable row level security;
+revoke all on public.category_mappings, public.tag_mappings from anon, authenticated;
+grant all on public.category_mappings, public.tag_mappings to service_role;
+
+-- Naya mapping add hone ke baad: pending games ki khali category bhar do.
+create function public.apply_category_mappings(p_provider text)
+returns integer
+language plpgsql
+set search_path = ''
+as $$
+declare
+  n integer;
+begin
+  update public.staged_games sg
+  set category_id = cm.category_id
+  from public.category_mappings cm
+  where sg.provider = p_provider
+    and sg.status = 'pending'
+    and sg.category_id is null
+    and cm.provider = sg.provider
+    and cm.provider_category = lower(btrim(regexp_replace(sg.provider_category, '\s+', ' ', 'g')));
+
+  get diagnostics n = row_count;
+  return n;
+end;
+$$;
+
+revoke execute on function public.apply_category_mappings(text) from public, anon, authenticated;
+grant execute on function public.apply_category_mappings(text) to service_role;
+
+-- approve_staged_game: ab tags ko saaf karta aur tag_mappings lagata hai (baqi wohi jo pehle tha).
+create or replace function public.approve_staged_game(
+  p_staged_id uuid,
+  p_category_id uuid,
+  p_admin_id uuid,
+  p_slug text default null
+)
+returns uuid
+language plpgsql
+set search_path = ''
+as $$
+declare
+  s public.staged_games%rowtype;
+  v_slug text;
+  v_game_id uuid;
+  v_tags text[];
+begin
+  select * into s from public.staged_games where id = p_staged_id for update;
+
+  if not found then
+    raise exception 'staged game not found';
+  end if;
+  if s.status <> 'pending' then
+    raise exception 'only pending games can be approved (current status: %)', s.status;
+  end if;
+  if not exists (select 1 from public.categories where id = p_category_id) then
+    raise exception 'category not found';
+  end if;
+
+  v_slug := coalesce(nullif(btrim(p_slug), ''), s.slug);
+  if v_slug is null or v_slug !~ '^[a-z0-9-]+$' then
+    raise exception 'invalid slug';
+  end if;
+
+  if exists (
+    select 1 from public.games g
+    where g.slug = v_slug
+      and not (g.provider = s.provider and g.provider_game_id = s.provider_game_id)
+  ) then
+    raise exception 'slug "%" is already used by another game', v_slug;
+  end if;
+
+  -- Tags: saaf karo (lowercase, a-z0-9 aur dash), mapping lagao. Mapped-to-null tag hat jata hai.
+  select coalesce(array_agg(distinct coalesce(tm.our_tag, n.norm)), '{}')
+  into v_tags
+  from (
+    select nullif(btrim(regexp_replace(lower(btrim(t)), '[^a-z0-9]+', '-', 'g'), '-'), '') as norm
+    from unnest(s.tags) as t
+  ) n
+  left join public.tag_mappings tm
+    on tm.provider = s.provider and tm.provider_tag = n.norm
+  where n.norm is not null
+    and (tm.provider_tag is null or tm.our_tag is not null);
+
+  insert into public.games (
+    slug, title, description, thumbnail_url, embed_url, category_id,
+    tags, devices, provider, provider_game_id, content_hash, is_published
+  )
+  values (
+    v_slug, s.title, s.description, s.thumbnail_url, s.embed_url, p_category_id,
+    v_tags, s.devices, s.provider, s.provider_game_id, s.content_hash, true
+  )
+  on conflict (provider, provider_game_id) do update set
+    slug = excluded.slug,
+    title = excluded.title,
+    description = excluded.description,
+    thumbnail_url = excluded.thumbnail_url,
+    embed_url = excluded.embed_url,
+    category_id = excluded.category_id,
+    tags = excluded.tags,
+    devices = excluded.devices,
+    content_hash = excluded.content_hash,
+    is_published = true
+  returning id into v_game_id;
+
+  update public.staged_games
+  set status = 'approved',
+      slug = v_slug,
+      category_id = p_category_id,
+      reviewed_by = p_admin_id,
+      reviewed_at = now()
+  where id = p_staged_id;
+
+  insert into public.audit_logs (admin_id, action, entity_type, entity_id, details)
+  values (
+    p_admin_id, 'game.approve', 'game', v_game_id,
+    jsonb_build_object('staged_id', p_staged_id, 'slug', v_slug, 'provider', s.provider, 'tags', v_tags)
+  );
+
+  return v_game_id;
+end;
+$$;
+
+revoke execute on function public.approve_staged_game(uuid, uuid, uuid, text) from public, anon, authenticated;
+grant execute on function public.approve_staged_game(uuid, uuid, uuid, text) to service_role;
+
+===== FILE: turbo.json =====
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {},
+    "typecheck": {}
+  }
+}
+

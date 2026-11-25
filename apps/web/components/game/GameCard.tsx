@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Game } from "@berryblue/shared";
 import { DeviceIcon } from "@/components/game/DeviceIcon";
 import { FavoriteButton } from "@/components/game/FavoriteButton";
+import { ThumbBlock } from "@/components/game/ThumbBlock";
 import { t } from "@/i18n";
 
 export type GameCardData = Pick<
@@ -30,8 +31,9 @@ export function GameCard({ game, priority = false }: GameCardProps) {
           height={400}
           sizes="(min-width: 768px) 25vw, 50vw"
           priority={priority}
-          className="aspect-square w-full object-cover transition group-hover:scale-105"
+          className="card-thumb aspect-square w-full object-cover transition group-hover:scale-105"
         />
+        <ThumbBlock title={game.title} className="aspect-square w-full text-5xl" />
         {/* Only shown for a mouse on desktop. The text is also on the game page, so screen readers skip it. */}
         {description ? (
           <div

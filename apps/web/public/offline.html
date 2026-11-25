@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#5b4bdb" />
+    <title>You are offline</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #14122b;
+        --muted: #6b6890;
+        --brand: #5b4bdb;
+        --brand-fg: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f0d1f;
+          --fg: #f1f0fb;
+          --muted: #a19fc8;
+          --brand: #8b7cff;
+          --brand-fg: #0f0d1f;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 24px;
+        text-align: center;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: system-ui, sans-serif;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.5rem;
+      }
+      p {
+        margin: 0;
+        max-width: 28rem;
+        color: var(--muted);
+      }
+      button {
+        margin-top: 8px;
+        min-height: 44px;
+        padding: 0 24px;
+        border: 0;
+        border-radius: 12px;
+        background: var(--brand);
+        color: var(--brand-fg);
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="96" height="96" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="55" r="38" fill="var(--brand)" />
+      <circle cx="38" cy="50" r="6" fill="var(--brand-fg)" />
+      <circle cx="62" cy="50" r="6" fill="var(--brand-fg)" />
+      <path
+        d="M38 74 Q50 64 62 74"
+        stroke="var(--brand-fg)"
+        stroke-width="4"
+        fill="none"
+        stroke-linecap="round"
+      />
+      <path d="M50 17 Q56 6 66 10 Q60 20 50 17Z" fill="#2f8cff" />
+    </svg>
+    <h1>You are offline</h1>
+    <p>BerryBlue needs the internet to load games. Check your connection and try again.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+  </body>
+</html>

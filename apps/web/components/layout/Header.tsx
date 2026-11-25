@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { LowInternetToggle } from "@/components/layout/LowInternetToggle";
 import { NavLink } from "@/components/layout/NavLink";
 import { SearchBox } from "@/components/layout/SearchBox";
 import { t } from "@/i18n";
@@ -33,6 +34,8 @@ export function Header() {
             </ul>
           </Suspense>
         </nav>
+
+        <LowInternetToggle />
 
         <Link
           href="/favorites"

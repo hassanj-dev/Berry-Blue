@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { ThumbBlock } from "@/components/game/ThumbBlock";
 import { Button } from "@/components/ui/Button";
 import { t } from "@/i18n";
 import { recordPlay } from "@/lib/play-actions";
@@ -124,8 +125,9 @@ export function GamePlayer({
               fill
               priority
               sizes="(min-width: 1152px) 1152px, 100vw"
-              className="object-cover"
+              className="card-thumb object-cover"
             />
+            <ThumbBlock title={title} className="absolute inset-0 text-7xl" />
             <div className="absolute inset-0 flex items-center justify-center bg-background/50">
               <button
                 type="button"

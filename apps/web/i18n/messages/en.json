@@ -1,4 +1,8 @@
 {
+  "lowInternet": {
+    "label": "Low Internet Mode",
+    "title": "Low Internet Mode: shows colours instead of pictures"
+  },
   "continuePlaying": {
     "title": "Continue playing",
     "clear": "Clear"

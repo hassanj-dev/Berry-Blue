@@ -78,3 +78,19 @@ body {
 html[data-low-internet] .card-preview {
   display: none !important;
 }
+
+/* Low Internet Mode: <html data-low-internet> is set by the script in app/layout.tsx. */
+.card-block {
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+html[data-low-internet] .card-block {
+  display: flex;
+}
+
+/* A hidden lazy image is never downloaded. */
+html[data-low-internet] .card-thumb {
+  display: none;
+}

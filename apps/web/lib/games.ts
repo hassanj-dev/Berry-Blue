@@ -180,9 +180,12 @@ export async function getGameBySlug(slug: string): Promise<Game | null> {
 
 // ---------- Related games ----------
 
+// Candidates: same category, plus games that share a tag.
+// Score: 2 for the same category, 1 for each shared tag. Ties go to the most played.
 async function loadRelatedGames(
   categorySlug: string,
   excludeSlug: string,
+  tags: string[],
   limit: number,
 ): Promise<Game[]> {
   "use cache";
@@ -190,7 +193,7 @@ async function loadRelatedGames(
 
   const supabase = createPublicClient();
 
-  const { data, error } = await supabase
+  const sameCategory = await supabase
     .from("games")
     .select(GAME_COLUMNS_INNER)
     .eq("is_published", true)
@@ -198,20 +201,45 @@ async function loadRelatedGames(
     .neq("slug", excludeSlug)
     .order("play_count", { ascending: false })
     .order("id")
-    .limit(limit);
+    .limit(48);
 
-  if (error) throw new Error(`getRelatedGames(${categorySlug}) failed: ${error.message}`);
+  if (sameCategory.error) {
+    throw new Error(`getRelatedGames category failed: ${sameCategory.error.message}`);
+  }
 
-  return parseRows(data);
+  const candidates = parseRows(sameCategory.data);
+
+  if (tags.length > 0) {
+    const sharedTags = await supabase
+      .from("games")
+      .select(GAME_COLUMNS)
+      .eq("is_published", true)
+      .overlaps("tags", tags)
+      .neq("slug", excludeSlug)
+      .order("play_count", { ascending: false })
+      .order("id")
+      .limit(48);
+
+    if (sharedTags.error) {
+      throw new Error(`getRelatedGames tags failed: ${sharedTags.error.message}`);
+    }
+
+    candidates.push(...parseRows(sharedTags.data));
+  }
+
+  const unique = [...new Map(candidates.map((game) => [game.id, game])).values()];
+
+  const score = (game: Game) =>
+    (game.categorySlug === categorySlug ? 2 : 0) +
+    game.tags.filter((tag) => tags.includes(tag)).length;
+
+  // sort() is stable, so equal scores keep the play_count order.
+  return unique.sort((a, b) => score(b) - score(a)).slice(0, limit);
 }
 
-export async function getRelatedGames(
-  categorySlug: string,
-  excludeSlug: string,
-  limit = 4,
-): Promise<Game[]> {
+export async function getRelatedGames(game: Game, limit = 4): Promise<Game[]> {
   try {
-    return await loadRelatedGames(categorySlug, excludeSlug, limit);
+    return await loadRelatedGames(game.categorySlug, game.slug, game.tags, limit);
   } catch (error) {
     console.error(error);
     return [];

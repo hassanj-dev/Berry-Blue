@@ -43,7 +43,7 @@ async function GameContent({ params }: { params: Params }) {
 
   if (!game) notFound();
 
-  const related = await getRelatedGames(game.categorySlug, game.slug);
+  const related = await getRelatedGames(game);
 
   return (
     <div className="flex flex-col gap-8">
@@ -59,6 +59,12 @@ async function GameContent({ params }: { params: Params }) {
         </p>
       </div>
 
+      <GamePlayer
+        gameId={game.id}
+        title={game.title}
+        thumbnailUrl={game.thumbnailUrl}
+        embedUrl={game.embedUrl}
+      />
       <Suspense fallback={null}>
         <PlayCount gameId={game.id} />
       </Suspense>
@@ -67,12 +73,6 @@ async function GameContent({ params }: { params: Params }) {
       </Suspense>
       <GameShare title={game.title} />
       <GameReport gameId={game.id} />
-      <GamePlayer
-        gameId={game.id}
-        title={game.title}
-        thumbnailUrl={game.thumbnailUrl}
-        embedUrl={game.embedUrl}
-      />
 
       <section aria-labelledby="about-heading" className="flex flex-col gap-3">
         <h2 id="about-heading" className="text-lg font-bold">
@@ -111,7 +111,7 @@ async function GameContent({ params }: { params: Params }) {
       {related.length > 0 && (
         <section aria-labelledby="related-heading">
           <h2 id="related-heading" className="text-lg font-bold">
-            {t("game.related", { category: game.categorySlug })}
+            {t("game.related")}
           </h2>
           <ul className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             {related.map((item) => (

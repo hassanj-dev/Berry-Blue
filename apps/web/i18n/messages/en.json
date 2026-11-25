@@ -86,7 +86,7 @@
     "notFound": "Game not found",
     "about": "About this game",
     "devices": "Playable on",
-    "related": "More {category} games"
+    "related": "Related games"
   },
   "category": {
     "browse": "Browse by category",

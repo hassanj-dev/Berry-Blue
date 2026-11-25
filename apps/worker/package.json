@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "import-catalog": "tsx --env-file=.env src/import.ts",
+    "check-health": "tsx --env-file=.env src/check-health.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

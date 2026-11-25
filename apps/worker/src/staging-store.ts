@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 const PAGE_SIZE = 1000; // Supabase ek baar mein itni hi rows deta hai
 const INSERT_CHUNK = 200;
+const SEEN_CHUNK = 500;
 
 // core ka StagingStore interface, asli Supabase database ke saath.
 export function createSupabaseStagingStore(supabase: SupabaseClient): StagingStore {
@@ -84,6 +85,17 @@ export function createSupabaseStagingStore(supabase: SupabaseClient): StagingSto
         });
 
         if (error) throw new Error(`insertStaged failed: ${error.message}`);
+      }
+    },
+
+    async markSeen(provider, providerGameIds) {
+      for (let i = 0; i < providerGameIds.length; i += SEEN_CHUNK) {
+        const { error } = await supabase.rpc("mark_feed_seen", {
+          p_provider: provider,
+          p_ids: providerGameIds.slice(i, i + SEEN_CHUNK),
+        });
+
+        if (error) throw new Error(`markSeen failed: ${error.message}`);
       }
     },
 

@@ -30,6 +30,7 @@ export async function runImport(
     const known = await store.getKnownHashes(adapter.provider);
     const categoryMap = await store.getCategoryMappings(adapter.provider);
     const seenInFeed = new Set<string>();
+    const feedIds = new Set<string>();
     const rows: StagedRow[] = [];
 
     for (const [index, raw] of catalog.entries()) {
@@ -50,6 +51,7 @@ export async function runImport(
         continue;
       }
 
+      feedIds.add(draft.providerGameId);
       const hash = await contentHash(raw);
       const key = draft.providerGameId + ":" + hash;
 
@@ -96,6 +98,7 @@ export async function runImport(
     }
 
     if (rows.length > 0) await store.insertStaged(batchId, rows);
+    await store.markSeen(adapter.provider, [...feedIds]);
     await store.finishBatch(batchId, stats);
 
     return { batchId, stats, skipped };

@@ -5,6 +5,16 @@ import { createSecretClient } from "@/lib/supabase/secret";
 
 export const metadata: Metadata = { title: "Games" };
 
+// A game is flagged after this many failed embed checks in a row (the worker counts them).
+const FLAGGED_AFTER = 3;
+
+type Health = {
+  last_ok: boolean;
+  last_checked_at: string;
+  last_error: string | null;
+  consecutive_failures: number;
+};
+
 type GameRow = {
   id: string;
   slug: string;
@@ -12,14 +22,37 @@ type GameRow = {
   provider: string;
   is_published: boolean;
   categories: { name: string } | null;
+  game_health: Health | Health[] | null;
 };
+
+function healthOf(game: GameRow): Health | null {
+  return Array.isArray(game.game_health) ? (game.game_health[0] ?? null) : game.game_health;
+}
+
+function HealthLabel({ health }: { health: Health | null }) {
+  if (!health) return <span className="text-sm text-muted">Embed not checked yet</span>;
+
+  const when = new Date(health.last_checked_at).toLocaleDateString("en-GB");
+  if (health.last_ok) return <span className="text-sm text-muted">Embed OK ({when})</span>;
+
+  const flagged = health.consecutive_failures >= FLAGGED_AFTER;
+  return (
+    <span className="text-sm text-danger">
+      {flagged ? "Flagged: " : "Failing: "}
+      {health.consecutive_failures} failed checks in a row
+      {health.last_error ? ` (${health.last_error})` : ""}
+    </span>
+  );
+}
 
 export default async function GamesPage() {
   await requireAdmin();
 
   const { data, error } = await createSecretClient()
     .from("games")
-    .select("id, slug, title, provider, is_published, categories(name)")
+    .select(
+      "id, slug, title, provider, is_published, categories(name), game_health(last_ok, last_checked_at, last_error, consecutive_failures)",
+    )
     .order("title")
     .order("id")
     .limit(500);
@@ -43,6 +76,7 @@ export default async function GamesPage() {
                 {game.slug} &middot; {game.categories?.name ?? "no category"} &middot;{" "}
                 {game.provider}
               </span>
+              <HealthLabel health={healthOf(game)} />
             </div>
 
             <div className="flex items-center gap-3">

@@ -1,6 +1,6 @@
 import { cacheLife } from "next/cache";
 import { categorySchema, gameSchema, type Category, type Game } from "@berryblue/shared";
-import { PAGE_SIZE, type SortName } from "@/lib/games-query";
+import { PAGE_SIZE, type GamesFilters, type SortName } from "@/lib/games-query";
 import { createPublicClient } from "@/lib/supabase/public";
 
 export type ShelfName = SortName;
@@ -91,7 +91,7 @@ export async function getShelf(shelf: ShelfName, limit = 8): Promise<Game[]> {
   }
 }
 
-// ---------- All games (sort + pagination) ----------
+// ---------- All games (sort + filters + pagination) ----------
 
 export type GamesPage = {
   games: Game[];
@@ -100,16 +100,43 @@ export type GamesPage = {
   pageCount: number;
 };
 
-async function loadGamesPage(sort: SortName, page: number, pageSize: number): Promise<GamesPage> {
+// Filters come in as plain strings (null = no filter) so the cache key stays simple.
+async function loadGamesPage(
+  sort: SortName,
+  page: number,
+  pageSize: number,
+  category: string | null,
+  device: string | null,
+  tag: string | null,
+): Promise<GamesPage> {
   "use cache";
   cacheLife("minutes");
 
   const supabase = createPublicClient();
 
-  const { count, error: countError } = await supabase
+  // "!inner" is always used, so the count and the list agree on which games exist.
+  // The category filter itself is added only when one is chosen.
+  let countQuery = supabase
     .from("games")
-    .select("id", { count: "exact", head: true })
+    .select("id, categories!inner(slug)", { count: "exact", head: true })
     .eq("is_published", true);
+
+  let listQuery = supabase.from("games").select(GAME_COLUMNS_INNER).eq("is_published", true);
+
+  if (category) {
+    countQuery = countQuery.eq("categories.slug", category);
+    listQuery = listQuery.eq("categories.slug", category);
+  }
+  if (device) {
+    countQuery = countQuery.contains("devices", [device]);
+    listQuery = listQuery.contains("devices", [device]);
+  }
+  if (tag) {
+    countQuery = countQuery.contains("tags", [tag]);
+    listQuery = listQuery.contains("tags", [tag]);
+  }
+
+  const { count, error: countError } = await countQuery;
 
   if (countError || count === null) {
     throw new Error(`getGamesPage count failed: ${countError?.message ?? "no count"}`);
@@ -120,10 +147,7 @@ async function loadGamesPage(sort: SortName, page: number, pageSize: number): Pr
 
   const from = (page - 1) * pageSize;
 
-  const { data, error } = await supabase
-    .from("games")
-    .select(GAME_COLUMNS)
-    .eq("is_published", true)
+  const { data, error } = await listQuery
     .order(SORT_COLUMN[sort], { ascending: false })
     .order("id")
     .range(from, from + pageSize - 1);
@@ -133,20 +157,27 @@ async function loadGamesPage(sort: SortName, page: number, pageSize: number): Pr
   return { games: parseRows(data), total: count, page, pageCount };
 }
 
-// null ka matlab: database se baat nahi ho saki.
+// null = the database could not be reached.
 export async function getGamesPage(
   sort: SortName,
   page: number,
+  filters: GamesFilters = {},
   pageSize = PAGE_SIZE,
 ): Promise<GamesPage | null> {
   try {
-    return await loadGamesPage(sort, page, pageSize);
+    return await loadGamesPage(
+      sort,
+      page,
+      pageSize,
+      filters.category ?? null,
+      filters.device ?? null,
+      filters.tag ?? null,
+    );
   } catch (error) {
     console.error(error);
     return null;
   }
 }
-
 // ---------- One game ----------
 
 // null = nahi mila. Database error par throw (error page), taake masla cache na ho.

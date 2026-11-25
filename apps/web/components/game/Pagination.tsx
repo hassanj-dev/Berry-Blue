@@ -1,17 +1,14 @@
 import Link from "next/link";
 import { t } from "@/i18n";
 import { cn } from "@/lib/cn";
-import type { SortName } from "@/lib/games-query";
+import { gamesHref, type GamesFilters, type SortName } from "@/lib/games-query";
 
 type PaginationProps = {
   sort: SortName;
+  filters: GamesFilters;
   page: number;
   pageCount: number;
 };
-
-function pageHref(sort: SortName, page: number) {
-  return page === 1 ? "/games?sort=" + sort : "/games?sort=" + sort + "&page=" + page;
-}
 
 // Pehla, aakhri, aur maujooda page ke aas paas ke pages; beech ka farq "gap" se dikhate hain.
 function pageItems(current: number, count: number): Array<number | "gap"> {
@@ -29,15 +26,17 @@ function pageItems(current: number, count: number): Array<number | "gap"> {
 const base =
   "inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border px-3 text-sm";
 
-export function Pagination({ sort, page, pageCount }: PaginationProps) {
+export function Pagination({ sort, filters, page, pageCount }: PaginationProps) {
   if (pageCount <= 1) return null;
+
+  const hrefFor = (target: number) => gamesHref({ ...filters, sort, page: target });
 
   return (
     <nav aria-label={t("games.pagination.label")} className="mt-8">
       <ul className="flex flex-wrap items-center justify-center gap-2">
         <li>
           {page > 1 ? (
-            <Link href={pageHref(sort, page - 1)} rel="prev" className={cn(base, "bg-surface")}>
+            <Link href={hrefFor(page - 1)} rel="prev" className={cn(base, "bg-surface")}>
               {t("games.pagination.previous")}
             </Link>
           ) : (
@@ -55,7 +54,7 @@ export function Pagination({ sort, page, pageCount }: PaginationProps) {
           ) : (
             <li key={item}>
               <Link
-                href={pageHref(sort, item)}
+                href={hrefFor(item)}
                 aria-current={item === page ? "page" : undefined}
                 aria-label={t("games.pagination.page", { page: item })}
                 className={cn(
@@ -71,7 +70,7 @@ export function Pagination({ sort, page, pageCount }: PaginationProps) {
 
         <li>
           {page < pageCount ? (
-            <Link href={pageHref(sort, page + 1)} rel="next" className={cn(base, "bg-surface")}>
+            <Link href={hrefFor(page + 1)} rel="next" className={cn(base, "bg-surface")}>
               {t("games.pagination.next")}
             </Link>
           ) : (

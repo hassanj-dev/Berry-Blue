@@ -52,6 +52,16 @@
     "title": "All games",
     "error": "Could not load games. Please try again.",
     "empty": "No games found.",
+    "noMatch": "No games match these filters.",
+    "filters": {
+      "label": "Filters",
+      "category": "Category",
+      "device": "Device",
+      "tag": "Tags",
+      "all": "All",
+      "anyDevice": "Any device",
+      "clear": "Clear filters"
+    },
     "showing": "Showing {from}-{to} of {total} games",
     "sortBy": "Sort games",
     "sort": {

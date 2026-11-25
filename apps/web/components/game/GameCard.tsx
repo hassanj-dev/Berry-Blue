@@ -8,16 +8,20 @@ import { t } from "@/i18n";
 export type GameCardData = Pick<
   Game,
   "slug" | "title" | "categorySlug" | "devices" | "tags" | "thumbnailUrl"
->;
+> & { description?: string | undefined };
 
 type GameCardProps = {
   game: GameCardData;
   priority?: boolean;
 };
 
+const PREVIEW_MAX = 200;
+
 export function GameCard({ game, priority = false }: GameCardProps) {
+  const description = (game.description ?? "").trim().slice(0, PREVIEW_MAX);
+
   return (
-    <article className="group relative flex flex-col gap-2 rounded-2xl border border-border bg-surface p-3 transition hover:border-brand">
+    <article className="game-card group relative flex flex-col gap-2 rounded-2xl border border-border bg-surface p-3 transition hover:border-brand">
       <div className="relative overflow-hidden rounded-xl">
         <Image
           src={game.thumbnailUrl}
@@ -28,6 +32,15 @@ export function GameCard({ game, priority = false }: GameCardProps) {
           priority={priority}
           className="aspect-square w-full object-cover transition group-hover:scale-105"
         />
+        {/* Only shown for a mouse on desktop. The text is also on the game page, so screen readers skip it. */}
+        {description ? (
+          <div
+            aria-hidden="true"
+            className="card-preview pointer-events-none absolute inset-x-0 bottom-0 p-3 pt-10"
+          >
+            <p className="line-clamp-3 text-xs text-white">{description}</p>
+          </div>
+        ) : null}
         <FavoriteButton slug={game.slug} title={game.title} />
       </div>
 

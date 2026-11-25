@@ -42,3 +42,39 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* Hover preview: a mouse on desktop, or keyboard focus. Touch screens never see it. */
+.card-preview {
+  display: none;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.85), rgb(0 0 0 / 0.5) 60%, transparent);
+}
+
+@keyframes card-preview-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .game-card:hover .card-preview,
+  .game-card:has(:focus-visible) .card-preview {
+    display: block;
+    /* 300 ms delay, so moving the mouse across the grid does not flash every card. */
+    animation: card-preview-in 150ms ease 300ms both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-card:hover .card-preview,
+  .game-card:has(:focus-visible) .card-preview {
+    animation: none;
+  }
+}
+
+/* Phase 5F: Low Internet Mode will set data-low-internet on <html>. */
+html[data-low-internet] .card-preview {
+  display: none !important;
+}

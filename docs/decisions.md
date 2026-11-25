@@ -6,3 +6,6 @@
 - Favorites (max 50) and recently played (max 12) live in localStorage, per browser. No accounts and no sync between devices. At the maximum, the oldest entry drops off.
 - Both lists are checked when read. Games that were unpublished are dropped when /favorites loads.
 - Rate limits and Turnstile (4G) are still not built. Do them before Phase 7.
+
+- Continue playing (homepage): reads the recent list from localStorage, loads cards via /api/games/by-slugs. Hidden when the list is empty.
+- Hover preview: CSS only, description over the thumbnail. Only for a mouse (hover: hover and pointer: fine) or keyboard focus. Low Internet Mode (5F) hides it with html[data-low-internet].

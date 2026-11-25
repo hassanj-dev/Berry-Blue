@@ -1,4 +1,8 @@
 {
+  "continuePlaying": {
+    "title": "Continue playing",
+    "clear": "Clear"
+  },
   "favorites": {
     "title": "My favorites",
     "link": "Favorites",

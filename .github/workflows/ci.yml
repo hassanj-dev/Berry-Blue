@@ -16,9 +16,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     env:
-      # Nakli values: CI ke paas asli secrets nahi hote.
-      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder-key
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
     steps:
       - uses: actions/checkout@v6
 

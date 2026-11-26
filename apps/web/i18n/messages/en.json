@@ -4,6 +4,10 @@
     "title": "Switch between dark and light"
   },
   "lowInternet": {
+    "slow": "Slow internet",
+    "slowShort": "Slow",
+    "offline": "No internet",
+    "offlineShort": "Offline",
     "label": "Low Internet Mode",
     "title": "Low Internet Mode: shows colours instead of pictures"
   },

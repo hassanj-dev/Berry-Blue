@@ -1,48 +1,43 @@
 import { useSyncExternalStore } from "react";
-import { LOW_INTERNET_ATTR, LOW_INTERNET_KEY } from "@/lib/low-internet-script";
+import { LOW_INTERNET_ATTR } from "@/lib/low-internet-script";
 
-const listeners = new Set<() => void>();
+export type NetworkStatus = "ok" | "slow" | "offline";
 
-function emit() {
-  for (const listener of listeners) listener();
+type Connection = EventTarget & { effectiveType?: string; saveData?: boolean };
+
+// Chrome, Edge and most Android browsers have this. Safari and Firefox do not.
+function getConnection() {
+  return (navigator as Navigator & { connection?: Connection }).connection;
 }
 
-// Another tab changed the choice: follow it.
-function onStorage(event: StorageEvent) {
-  if (event.key !== LOW_INTERNET_KEY) return;
-  document.documentElement.toggleAttribute(LOW_INTERNET_ATTR, event.newValue === "on");
-  emit();
+function readStatus(): NetworkStatus {
+  if (!navigator.onLine) return "offline";
+  const type = getConnection()?.effectiveType;
+  return type === "slow-2g" || type === "2g" || type === "3g" ? "slow" : "ok";
 }
 
-function subscribe(listener: () => void) {
-  if (listeners.size === 0) window.addEventListener("storage", onStorage);
-  listeners.add(listener);
+function subscribeNetwork(listener: () => void) {
+  const connection = getConnection();
+  window.addEventListener("online", listener);
+  window.addEventListener("offline", listener);
+  connection?.addEventListener("change", listener);
 
   return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0) window.removeEventListener("storage", onStorage);
+    window.removeEventListener("online", listener);
+    window.removeEventListener("offline", listener);
+    connection?.removeEventListener("change", listener);
   };
 }
 
-function getSnapshot() {
-  return document.documentElement.hasAttribute(LOW_INTERNET_ATTR);
+export function useNetworkStatus() {
+  return useSyncExternalStore(subscribeNetwork, readStatus, () => "ok" as NetworkStatus);
 }
 
-// false on the server and while hydrating, so the button never causes a hydration warning.
-function getServerSnapshot() {
-  return false;
-}
+// Turns the low internet look on or off to match the connection.
+export function applyAutoLowInternet() {
+  const status = readStatus();
+  if (status === "offline") return;
 
-export function useLowInternet() {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-}
-
-export function setLowInternet(on: boolean) {
+  const on = status === "slow" || getConnection()?.saveData === true;
   document.documentElement.toggleAttribute(LOW_INTERNET_ATTR, on);
-  try {
-    localStorage.setItem(LOW_INTERNET_KEY, on ? "on" : "off");
-  } catch {
-    // Storage can be blocked (private mode). The mode still works until the page closes.
-  }
-  emit();
 }

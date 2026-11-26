@@ -1,0 +1,164 @@
+===== apps\web\app\layout.tsx =====
+import type { Metadata, Viewport } from "next";
+import { Geist_Mono, Rubik } from "next/font/google";
+import { ServiceWorkerRegister } from "@/components/layout/ServiceWorkerRegister";
+import { lowInternetInitScript } from "@/lib/low-internet-script";
+import { siteConfig } from "@/lib/site";
+import { themeInitScript } from "@/lib/theme-script";
+import "./globals.css";
+
+const rubik = Rubik({
+  variable: "--font-rubik",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: siteConfig.name,
+  description: siteConfig.description,
+  applicationName: siteConfig.name,
+  appleWebApp: { capable: true, title: siteConfig.name, statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: siteConfig.themeColor,
+  viewportFit: "cover",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    // suppressHydrationWarning: the scripts below add data-theme and data-low-internet to <html> before React starts.
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${rubik.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: lowInternetInitScript }} />
+      </head>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <ServiceWorkerRegister />
+      </body>
+    </html>
+  );
+}
+
+===== apps\web\components\layout\Header.tsx =====
+import { LowInternetToggle } from "@/components/layout/LowInternetToggle";
+import { Logo } from "@/components/layout/Logo";
+import { SearchBox } from "@/components/layout/SearchBox";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
+
+// Phone: logo and toggles on the first row, search under them. Desktop: search on the left (the logo is in the sidebar).
+export function Header() {
+  return (
+    <header className="relative z-40 border-b border-border bg-background lg:sticky lg:top-0">
+      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-2 gap-y-2 px-4 py-2 md:gap-y-3 md:px-8 md:py-3 lg:flex-nowrap">
+        <Logo className="order-1 lg:hidden" />
+
+        <div className="order-2 ml-auto flex items-center lg:order-3">
+          <LowInternetToggle />
+          <ThemeToggle />
+        </div>
+
+        <div className="order-3 w-full lg:order-2 lg:max-w-md lg:flex-1">
+          <SearchBox />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+===== apps\web\components\layout\LowInternetToggle.tsx =====
+"use client";
+
+import { SignalHigh, SignalLow } from "lucide-react";
+import { t } from "@/i18n";
+import { cn } from "@/lib/cn";
+import { setLowInternet, useLowInternet } from "@/lib/low-internet";
+
+export function LowInternetToggle() {
+  const on = useLowInternet();
+  const Signal = on ? SignalLow : SignalHigh;
+
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      aria-label={t("lowInternet.label")}
+      title={t("lowInternet.title")}
+      onClick={() => setLowInternet(!on)}
+      className={cn(
+        "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:text-foreground",
+        on ? "text-brand" : "text-muted",
+      )}
+    >
+      <Signal size={20} strokeWidth={1.5} aria-hidden="true" />
+    </button>
+  );
+}
+
+===== apps\web\lib\low-internet-script.ts =====
+export const LOW_INTERNET_KEY = "low-internet";
+export const LOW_INTERNET_ATTR = "data-low-internet";
+
+// Runs in <head> before the page is painted. Order of decisions:
+// 1. the visitor's own choice ("on" or "off") wins,
+// 2. otherwise Save-Data or a 2g connection turns the mode on.
+export const lowInternetInitScript = `(function(){var on=false;try{var s=localStorage.getItem("${LOW_INTERNET_KEY}");if(s==="on"){on=true}else if(s!=="off"){var c=navigator.connection;on=!!c&&(c.saveData===true||c.effectiveType==="2g"||c.effectiveType==="slow-2g")}}catch(e){}if(on){document.documentElement.setAttribute("${LOW_INTERNET_ATTR}","")}})();`;
+
+===== apps\web\lib\low-internet.ts =====
+import { useSyncExternalStore } from "react";
+import { LOW_INTERNET_ATTR, LOW_INTERNET_KEY } from "@/lib/low-internet-script";
+
+const listeners = new Set<() => void>();
+
+function emit() {
+  for (const listener of listeners) listener();
+}
+
+// Another tab changed the choice: follow it.
+function onStorage(event: StorageEvent) {
+  if (event.key !== LOW_INTERNET_KEY) return;
+  document.documentElement.toggleAttribute(LOW_INTERNET_ATTR, event.newValue === "on");
+  emit();
+}
+
+function subscribe(listener: () => void) {
+  if (listeners.size === 0) window.addEventListener("storage", onStorage);
+  listeners.add(listener);
+
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) window.removeEventListener("storage", onStorage);
+  };
+}
+
+function getSnapshot() {
+  return document.documentElement.hasAttribute(LOW_INTERNET_ATTR);
+}
+
+// false on the server and while hydrating, so the button never causes a hydration warning.
+function getServerSnapshot() {
+  return false;
+}
+
+export function useLowInternet() {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+export function setLowInternet(on: boolean) {
+  document.documentElement.toggleAttribute(LOW_INTERNET_ATTR, on);
+  try {
+    localStorage.setItem(LOW_INTERNET_KEY, on ? "on" : "off");
+  } catch {
+    // Storage can be blocked (private mode). The mode still works until the page closes.
+  }
+  emit();
+}

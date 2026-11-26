@@ -14,9 +14,11 @@ type GamePlayerProps = {
   title: string;
   thumbnailUrl: string;
   embedUrl: string;
-  // Left side of the toolbar under the player: like, dislike, favorite, share.
+  // First row under the player: play count, like and dislike.
+  stats?: ReactNode;
+  // Second row, left side: favorite and share.
   actions?: ReactNode;
-  // Right side, before the fullscreen button: play count, report, phone QR.
+  // Second row, right side, before the fullscreen button: report and phone QR.
   meta?: ReactNode;
   gameId: string;
   slug: string;
@@ -47,6 +49,7 @@ export function GamePlayer({
   title,
   thumbnailUrl,
   embedUrl,
+  stats,
   actions,
   meta,
 }: GamePlayerProps) {
@@ -150,25 +153,28 @@ export function GamePlayer({
         )}
       </div>
 
-      <div className="relative mt-4 flex flex-wrap items-center gap-2">
-        {actions}
-        <div className="ml-auto flex items-center gap-3">
-          {meta}
-          {canFullscreen && (
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              aria-label={fullscreenLabel}
-              title={fullscreenLabel}
-              className={actionButton}
-            >
-              {isFullscreen ? (
-                <Minimize size={18} strokeWidth={1.5} aria-hidden="true" />
-              ) : (
-                <Maximize size={18} strokeWidth={1.5} aria-hidden="true" />
-              )}
-            </button>
-          )}
+      <div className="relative mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+        <div className="flex flex-wrap items-center gap-2">{stats}</div>
+        <div className="flex items-center justify-between gap-2 sm:flex-1 sm:justify-start">
+          {actions}
+          <div className="contents sm:ml-auto sm:flex sm:items-center sm:gap-2">
+            {meta}
+            {canFullscreen && (
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                aria-label={fullscreenLabel}
+                title={fullscreenLabel}
+                className={actionButton}
+              >
+                {isFullscreen ? (
+                  <Minimize size={18} strokeWidth={1.5} aria-hidden="true" />
+                ) : (
+                  <Maximize size={18} strokeWidth={1.5} aria-hidden="true" />
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

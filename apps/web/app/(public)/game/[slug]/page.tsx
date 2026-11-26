@@ -75,20 +75,24 @@ async function GameContent({ params }: { params: Params }) {
         title={game.title}
         thumbnailUrl={game.thumbnailUrl}
         embedUrl={game.embedUrl}
-        actions={
+        stats={
           <>
+            <Suspense fallback={null}>
+              <PlayCount gameId={game.id} />
+            </Suspense>
             <Suspense fallback={null}>
               <GameVotes gameId={game.id} />
             </Suspense>
+          </>
+        }
+        actions={
+          <>
             <FavoriteAction slug={game.slug} />
             <ShareButton title={game.title} />
           </>
         }
         meta={
           <>
-            <Suspense fallback={null}>
-              <PlayCount gameId={game.id} />
-            </Suspense>
             <GameReport gameId={game.id} />
             <GameQr />
           </>

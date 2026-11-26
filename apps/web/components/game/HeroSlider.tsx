@@ -3,7 +3,7 @@
 import { Play } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useState, useSyncExternalStore, type FocusEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type FocusEvent } from "react";
 import { BannerFavorite } from "@/components/game/BannerFavorite";
 import { ThumbBlock } from "@/components/game/ThumbBlock";
 import { t } from "@/i18n";
@@ -17,23 +17,12 @@ export type HeroSlide = {
   thumbnailUrl: string;
 };
 
-// How long one slide stays. The active dot fills for exactly this long,
-// and the slide changes when the fill ends, so the dot and the slide can never disagree.
-const SLIDE_MS = 6000;
+// How long one slide stays.
+const SLIDE_MS = 4000;
 
 function subscribeVisibility(onChange: () => void) {
   document.addEventListener("visibilitychange", onChange);
   return () => document.removeEventListener("visibilitychange", onChange);
-}
-
-function subscribeReducedMotion(onChange: () => void) {
-  const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
-}
-
-function getReducedMotion() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 // Low Internet Mode sets data-low-internet on <html>. No autoplay there.
@@ -63,11 +52,18 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
     () => false,
   );
   // true on the server, so there is no autoplay until the browser has checked.
-  const reducedMotion = useSyncExternalStore(subscribeReducedMotion, getReducedMotion, () => true);
   const lowInternet = useSyncExternalStore(subscribeLowInternet, getLowInternet, () => true);
 
-  const canPlay = count > 1 && !reducedMotion && !lowInternet;
-  const running = canPlay && !hovered && !focused && !tabHidden;
+  const running = count > 1 && !lowInternet && !hovered && !focused && !tabHidden;
+
+  // One timer per slide. Changing the slide (or clicking a dot) restarts it.
+  useEffect(() => {
+    if (!running) return;
+    const id = window.setTimeout(() => {
+      setIndex((current) => (current + 1) % count);
+    }, SLIDE_MS);
+    return () => window.clearTimeout(id);
+  }, [running, index, count]);
 
   function go(step: number) {
     setIndex((current) => (current + step + count) % count);
@@ -94,7 +90,6 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
       onPointerLeave={() => setHovered(false)}
       onFocus={handleFocus}
       onBlur={handleBlur}
-      // No arrow buttons: with the keyboard, the left and right arrow keys change the slide.
       onKeyDown={(event) => {
         if (count < 2) return;
         if (event.key === "ArrowLeft") go(-1);
@@ -112,7 +107,7 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
       }}
     >
       <div
-        className="relative aspect-[16/11] sm:aspect-[2/1] lg:aspect-auto lg:h-[22rem] xl:h-[26rem]"
+        className="relative aspect-[16/11] sm:aspect-[2/1] lg:aspect-auto lg:h-[clamp(16rem,40vh,22rem)]"
         aria-live={running ? "off" : "polite"}
       >
         {slides.map((slide, i) => {
@@ -148,19 +143,21 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
                 className="absolute inset-x-0 bottom-0 hidden h-24 bg-linear-to-t from-black/50 to-transparent lg:block"
               />
 
-              <div className="absolute inset-0 flex flex-col items-start justify-end gap-2 p-4 pb-12 sm:p-6 sm:pb-14 lg:gap-3 lg:p-10 lg:pb-14">
+              <div className="absolute inset-0 flex flex-col items-start justify-end gap-3 p-4 pb-12 sm:p-6 sm:pb-14 lg:p-8 lg:pb-12">
                 <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium capitalize leading-none text-white backdrop-blur">
                   {slide.categorySlug}
                 </span>
-                <h2 className="line-clamp-2 text-2xl font-[600] leading-tight text-white sm:text-3xl lg:max-w-lg lg:text-4xl">
-                  {slide.title}
-                </h2>
-                {slide.description ? (
-                  <p className="line-clamp-1 text-sm text-white/80 lg:line-clamp-2 lg:max-w-md lg:text-base">
-                    {slide.description}
-                  </p>
-                ) : null}
-                <div className="mt-1 flex items-center gap-2">
+                <div className="flex flex-col gap-1">
+                  <h2 className="m-0 line-clamp-2 pb-1 text-2xl font-[600] leading-[1.2] text-white sm:text-3xl lg:max-w-lg lg:text-3xl">
+                    {slide.title}
+                  </h2>
+                  {slide.description ? (
+                    <p className="m-0 line-clamp-1 text-sm leading-snug text-white/80 lg:max-w-md lg:text-base">
+                      {slide.description}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2">
                   <Link
                     href={"/game/" + slide.slug}
                     className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary-hover lg:h-10 lg:px-6 lg:text-sm"
@@ -187,29 +184,14 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
                     onClick={() => setIndex(i)}
                     aria-label={t("home.slider.goTo", { n: i + 1 })}
                     aria-current={active ? "true" : undefined}
-                    className="flex h-7 w-4 cursor-pointer items-center justify-center"
+                    className="flex h-7 cursor-pointer items-center justify-center px-1"
                   >
                     <span
                       className={cn(
-                        "block overflow-hidden rounded-full transition-all duration-300",
-                        active ? "size-2 bg-white/35" : "size-1.5 bg-white/45",
+                        "block size-1.5 rounded-full transition-colors duration-300",
+                        active ? "bg-white" : "bg-white/40",
                       )}
-                    >
-                      {active ? (
-                        canPlay ? (
-                          <span
-                            className="slider-dot-fill block size-full rounded-full bg-white"
-                            style={{
-                              animationDuration: SLIDE_MS + "ms",
-                              animationPlayState: running ? "running" : "paused",
-                            }}
-                            onAnimationEnd={() => go(1)}
-                          />
-                        ) : (
-                          <span className="block size-full rounded-full bg-white" />
-                        )
-                      ) : null}
-                    </span>
+                    />
                   </button>
                 </li>
               );

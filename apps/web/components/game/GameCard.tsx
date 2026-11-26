@@ -41,42 +41,47 @@ export function GameCard({ game, priority = false }: GameCardProps) {
       />
       <ThumbBlock title={game.title} className="absolute inset-0 text-5xl" />
       <FavoriteButton slug={game.slug} title={game.title} />
-
-      <div className="z-[1] flex flex-col gap-1.5 bg-linear-to-t from-black/90 via-black/55 to-transparent p-3 pr-14 pt-14 md:p-4 md:pr-16 md:pt-16">
-        <h3 className="line-clamp-2 text-sm font-medium leading-snug text-white md:text-base">
-          <Link
-            href={"/game/" + game.slug}
-            aria-label={t("card.playAria", { title: game.title })}
-            className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-brand"
-          >
-            {game.title}
-          </Link>
-        </h3>
-
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium capitalize leading-none text-white">
-            {game.categorySlug}
-          </span>
-          {hasStats ? (
-            <span className="flex items-center gap-1 text-xs font-medium tabular-nums text-white sm:hidden">
-              <ThumbsUp size={12} strokeWidth={1.5} aria-hidden="true" />
+      {hasStats ? (
+        <div
+          aria-hidden="true"
+          className="card-preview pointer-events-none absolute bottom-3 left-3 z-[2] md:bottom-4 md:left-4"
+        >
+          <p className="flex items-center gap-3 text-xs font-medium tabular-nums text-white">
+            <span className="flex items-center gap-1">
+              <PlayIcon size={12} />
+              {compact.format(game.playCount ?? 0)}
+            </span>
+            <span className="flex items-center gap-1">
+              <ThumbIcon size={12} />
               {compact.format(game.likeCount ?? 0)}
             </span>
-          ) : null}
-          {hasStats ? (
-            <div aria-hidden="true" className="card-preview pointer-events-none">
-              <p className="flex items-center gap-3 text-xs font-medium tabular-nums text-white">
-                <span className="flex items-center gap-1">
-                  <PlayIcon size={12} />
-                  {compact.format(game.playCount ?? 0)}
-                </span>
-                <span className="flex items-center gap-1">
-                  <ThumbIcon size={12} />
-                  {compact.format(game.likeCount ?? 0)}
-                </span>
-              </p>
-            </div>
-          ) : null}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="z-[1] flex flex-col gap-1.5 bg-linear-to-t from-black/90 via-black/55 to-transparent p-3 pr-14 pt-14 md:p-4 md:pr-16 md:pt-16">
+        <div className="card-info flex flex-col gap-1.5">
+          <h3 className="line-clamp-2 text-sm font-medium leading-snug text-white md:text-base">
+            <Link
+              href={"/game/" + game.slug}
+              aria-label={t("card.playAria", { title: game.title })}
+              className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-brand"
+            >
+              {game.title}
+            </Link>
+          </h3>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium capitalize leading-none text-white">
+              {game.categorySlug}
+            </span>
+            {hasStats ? (
+              <span className="flex items-center gap-1 text-xs font-medium tabular-nums text-white sm:hidden">
+                <ThumbsUp size={12} strokeWidth={1.5} aria-hidden="true" />
+                {compact.format(game.likeCount ?? 0)}
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
 

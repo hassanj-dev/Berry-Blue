@@ -17,14 +17,28 @@ export async function GET(request: NextRequest) {
   if (!games) return NextResponse.json({ games: [] }, { status: 503 });
 
   return NextResponse.json({
-    games: games.map(({ slug, title, description, categorySlug, devices, tags, thumbnailUrl }) => ({
-      slug,
-      title,
-      description: description.slice(0, DESCRIPTION_MAX),
-      categorySlug,
-      devices,
-      tags,
-      thumbnailUrl,
-    })),
+    games: games.map(
+      ({
+        slug,
+        title,
+        description,
+        categorySlug,
+        devices,
+        tags,
+        thumbnailUrl,
+        playCount,
+        likeCount,
+      }) => ({
+        slug,
+        title,
+        description: description.slice(0, DESCRIPTION_MAX),
+        categorySlug,
+        devices,
+        tags,
+        thumbnailUrl,
+        playCount,
+        likeCount,
+      }),
+    ),
   });
 }

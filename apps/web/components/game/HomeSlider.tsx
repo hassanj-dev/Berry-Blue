@@ -22,7 +22,7 @@ export function HomeSliderSkeleton() {
   return (
     <div
       aria-hidden="true"
-      className="aspect-[16/11] animate-pulse rounded-3xl bg-border sm:aspect-[2/1] lg:aspect-auto lg:h-[22rem] xl:h-[26rem]"
+      className="aspect-[16/11] animate-pulse rounded-3xl bg-border sm:aspect-[2/1] lg:aspect-auto lg:h-[clamp(16rem,40vh,22rem)]"
     />
   );
 }

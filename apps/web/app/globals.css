@@ -322,28 +322,51 @@ body {
 }
 /* ==== mobile-safe-area:end ==== */
 
-/* ==== home-slider:start ==== */
-/* Home slider: the active dot fills over the slide time; the slide changes when it ends. */
-@keyframes slider-dot-fill {
-  from {
-    transform: scale(0);
-  }
-  to {
-    transform: scale(1);
-  }
+/* ==== card-stats-slide:start ==== */
+/* Mouse on a card: title and category slide up a little, the plays and likes fade in underneath. */
+.card-info {
+  transition: transform 150ms ease-out;
 }
 
-.slider-dot-fill {
-  transform-origin: center;
-  animation-name: slider-dot-fill;
-  animation-timing-function: linear;
-  animation-fill-mode: forwards;
+@media (hover: hover) and (pointer: fine) {
+  .game-card:hover .card-info,
+  .game-card:has(:focus-visible) .card-info {
+    transform: translateY(-1.5rem);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .slider-dot-fill {
-    animation: none;
-    transform: scale(1);
+  .card-info {
+    transition: none;
   }
 }
-/* ==== home-slider:end ==== */
+
+html[data-low-internet] .game-card .card-info {
+  transform: none;
+}
+/* card-lift */
+.game-card {
+  transition:
+    transform 200ms ease-out,
+    box-shadow 200ms ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .game-card:hover,
+  .game-card:has(:focus-visible) {
+    transform: translateY(-6px);
+    box-shadow: 0 14px 28px -10px rgb(0 0 0 / 0.55);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-card {
+    transition: none;
+  }
+}
+
+html[data-low-internet] .game-card {
+  transform: none !important;
+  box-shadow: none !important;
+}
+/* ==== card-stats-slide:end ==== */

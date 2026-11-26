@@ -32,6 +32,30 @@ function Option({ href, active, label }: { href: string; active: boolean; label:
   );
 }
 
+// The sort dropdown. On phones it sits next to "Showing 1-12 of N" instead of in the filter row.
+export function SortMenu({
+  sort,
+  filters,
+  variant = "pill",
+}: {
+  sort: SortName;
+  filters: GamesFilters;
+  variant?: "pill" | "plain";
+}) {
+  return (
+    <FilterMenu label={t(`games.sort.${sort}`)} align="right" variant={variant}>
+      {SORTS.map((option) => (
+        <Option
+          key={option}
+          href={gamesHref({ ...filters, sort: option })}
+          active={option === sort}
+          label={t(`games.sort.${option}`)}
+        />
+      ))}
+    </FilterMenu>
+  );
+}
+
 // A new filter never keeps the old page number, so it starts again at page 1.
 export function GamesFilterBar({ sort, filters, categories, tags }: GamesFilterBarProps) {
   const category = categories.find((c) => c.slug === filters.category);
@@ -104,17 +128,8 @@ export function GamesFilterBar({ sort, filters, categories, tags }: GamesFilterB
           </FilterMenu>
         )}
 
-        <div className="sm:ml-auto">
-          <FilterMenu label={t(`games.sort.${sort}`)} align="right">
-            {SORTS.map((option) => (
-              <Option
-                key={option}
-                href={gamesHref({ ...filters, sort: option })}
-                active={option === sort}
-                label={t(`games.sort.${option}`)}
-              />
-            ))}
-          </FilterMenu>
+        <div className="max-sm:hidden sm:ml-auto">
+          <SortMenu sort={sort} filters={filters} />
         </div>
       </div>
 

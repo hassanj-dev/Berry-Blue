@@ -53,7 +53,7 @@ const iconClass =
 
 export function Footer() {
   return (
-    <footer className="mt-12 overflow-hidden border-t border-border [container-type:inline-size]">
+    <footer className="mt-4 overflow-hidden border-t border-border [container-type:inline-size]">
       <div className="mx-auto grid max-w-[1400px] grid-cols-2 gap-x-6 gap-y-10 px-4 pt-14 text-sm md:grid-cols-4 md:px-8 xl:grid-cols-[2fr_1fr_1fr_1fr_1fr]">
         <div className="col-span-2 md:col-span-4 xl:col-span-1">
           <Link href="/" className="flex items-center gap-2 text-xl font-[600]">

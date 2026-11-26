@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { GameCard, GameCardSkeleton } from "@/components/game/GameCard";
-import { GamesFilterBar } from "@/components/game/GamesFilterBar";
+import { GamesFilterBar, SortMenu } from "@/components/game/GamesFilterBar";
 import { Pagination } from "@/components/game/Pagination";
 import { t } from "@/i18n";
 import { getCategories, getGamesPage } from "@/lib/games";
@@ -82,9 +82,14 @@ function ResultsBody({
         <p className="text-muted">{hasFilters ? t("games.noMatch") : t("games.empty")}</p>
       ) : (
         <>
-          <p className="text-sm text-muted">
-            {t("games.showing", { from, to, total: result.total })}
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted">
+              {t("games.showing", { from, to, total: result.total })}
+            </p>
+            <div className="sm:hidden">
+              <SortMenu sort={sort} filters={filters} variant="plain" />
+            </div>
+          </div>
           <ul className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {result.games.map((game, index) => (
               <li key={game.id}>

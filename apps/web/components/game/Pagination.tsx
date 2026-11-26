@@ -8,6 +8,8 @@ type PaginationProps = {
   filters: GamesFilters;
   page: number;
   pageCount: number;
+  // Optional: build the links yourself (default: /games?...).
+  hrefFor?: (page: number) => string;
 };
 
 // Pehla, aakhri, aur maujooda page ke aas paas ke pages; beech ka farq "gap" se dikhate hain.
@@ -26,10 +28,16 @@ function pageItems(current: number, count: number): Array<number | "gap"> {
 const base =
   "inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border px-3 text-sm";
 
-export function Pagination({ sort, filters, page, pageCount }: PaginationProps) {
+export function Pagination({
+  sort,
+  filters,
+  page,
+  pageCount,
+  hrefFor: customHref,
+}: PaginationProps) {
   if (pageCount <= 1) return null;
 
-  const hrefFor = (target: number) => gamesHref({ ...filters, sort, page: target });
+  const hrefFor = customHref ?? ((target: number) => gamesHref({ ...filters, sort, page: target }));
 
   return (
     <nav aria-label={t("games.pagination.label")} className="mt-8">

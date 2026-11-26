@@ -17,6 +17,9 @@
     "clear": "Clear"
   },
   "favorites": {
+    "subtitle": "Saved on this device.",
+    "count": "{n} saved",
+    "clearAll": "Clear all",
     "title": "My favorites",
     "link": "Favorites",
     "action": "Save to favorites",

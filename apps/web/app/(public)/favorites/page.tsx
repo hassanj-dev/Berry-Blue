@@ -12,7 +12,8 @@ export default function FavoritesPage() {
   return (
     <main>
       <h1 className="text-2xl font-bold md:text-4xl">{t("favorites.title")}</h1>
-      <div className="mt-4">
+      <p className="mt-1 text-sm text-muted">{t("favorites.subtitle")}</p>
+      <div className="mt-6">
         <FavoritesList />
       </div>
     </main>

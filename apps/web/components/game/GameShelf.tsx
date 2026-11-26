@@ -34,7 +34,7 @@ export async function GameShelf({
         </h2>
         <Link
           href={"/games?sort=" + shelf}
-          className="text-sm text-muted transition-colors hover:text-foreground"
+          className="text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
         >
           {t("home.viewAll")}
         </Link>

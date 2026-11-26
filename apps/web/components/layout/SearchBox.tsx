@@ -104,7 +104,15 @@ export function SearchBox() {
 
   return (
     // A plain GET form: Enter still opens /search?q=... even without JavaScript.
-    <form action="/search" role="search" className="relative w-full min-w-0">
+    <form
+      action="/search"
+      role="search"
+      noValidate
+      onSubmit={(event) => {
+        if (text.length < SEARCH_MIN_LENGTH) event.preventDefault();
+      }}
+      className="relative w-full min-w-0"
+    >
       <span
         aria-hidden="true"
         className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted"
@@ -114,8 +122,6 @@ export function SearchBox() {
       <input
         type="search"
         name="q"
-        required
-        minLength={SEARCH_MIN_LENGTH}
         maxLength={SEARCH_MAX_LENGTH}
         enterKeyHint="search"
         autoComplete="off"
@@ -135,7 +141,7 @@ export function SearchBox() {
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
-        className="h-10 w-full rounded-xl border border-border bg-surface pl-11 pr-4 text-sm placeholder:text-muted md:h-11"
+        className="h-10 w-full rounded-xl border border-border bg-surface pl-11 pr-4 text-sm transition-colors placeholder:text-muted hover:bg-foreground/5 focus:border-border-strong focus:bg-foreground/5 focus-visible:outline-none! md:h-11"
       />
 
       {visible ? (

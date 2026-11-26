@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type KeyboardEvent } from "react";
+import { Icon } from "@/components/layout/icons";
 import { t } from "@/i18n";
 import { SEARCH_MAX_LENGTH, SEARCH_MIN_LENGTH, SUGGEST_MIN_LENGTH } from "@/lib/search-query";
 
@@ -103,7 +104,13 @@ export function SearchBox() {
 
   return (
     // A plain GET form: Enter still opens /search?q=... even without JavaScript.
-    <form action="/search" role="search" className="relative min-w-0 flex-1 md:ml-auto md:max-w-xs">
+    <form action="/search" role="search" className="relative w-full min-w-0">
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+      >
+        <Icon name="search" size={18} />
+      </span>
       <input
         type="search"
         name="q"
@@ -128,7 +135,7 @@ export function SearchBox() {
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
-        className="h-10 w-full rounded-full border border-border bg-surface px-4 text-sm"
+        className="h-11 w-full rounded-xl border border-border bg-surface pl-11 pr-4 text-sm placeholder:text-muted"
       />
 
       {visible ? (

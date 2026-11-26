@@ -1,6 +1,8 @@
 "use client";
 
+import { Share2, Smartphone, X } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { actionButton } from "@/components/game/action-styles";
 import { t } from "@/i18n";
 
 type Status = "idle" | "copied" | "failed";
@@ -23,38 +25,12 @@ function pageUrl() {
   return window.location.origin + window.location.pathname;
 }
 
-export function GameShare({ title }: { title: string }) {
-  const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktop, () => false);
-  const [qr, setQr] = useState<string | null>(null);
+// Round share button for the toolbar. The "Link copied" note appears next to it.
+export function ShareButton({ title }: { title: string }) {
   const [status, setStatus] = useState<Status>("idle");
   const timer = useRef<number | undefined>(undefined);
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
-
-  // Build the QR code only on desktop, and load the library only then.
-  useEffect(() => {
-    if (!isDesktop) return;
-    let cancelled = false;
-
-    async function build() {
-      try {
-        const QRCode = await import("qrcode");
-        const dataUrl = await QRCode.toDataURL(pageUrl(), {
-          width: 160,
-          margin: 1,
-          errorCorrectionLevel: "M",
-        });
-        if (!cancelled) setQr(dataUrl);
-      } catch (error) {
-        console.error("QR code failed:", error);
-      }
-    }
-
-    void build();
-    return () => {
-      cancelled = true;
-    };
-  }, [isDesktop]);
 
   function showStatus(next: Status) {
     setStatus(next);
@@ -87,31 +63,95 @@ export function GameShare({ title }: { title: string }) {
     status === "copied" ? t("game.linkCopied") : status === "failed" ? t("game.copyFailed") : "";
 
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3">
+    <>
+      <button
+        type="button"
+        onClick={handleShare}
+        aria-label={t("game.share")}
+        title={t("game.share")}
+        className={actionButton}
+      >
+        <Share2 size={18} strokeWidth={1.5} aria-hidden="true" />
+      </button>
+      <span aria-live="polite" className="text-sm text-muted empty:hidden">
+        {statusText}
+      </span>
+    </>
+  );
+}
+
+// Phone icon in the toolbar (desktop only). It opens a small popup with the QR code.
+// The QR library loads only when the popup is opened.
+export function GameQr() {
+  const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktop, () => false);
+  const [qr, setQr] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  async function openPopup() {
+    dialogRef.current?.showModal();
+    if (qr) return;
+
+    try {
+      const QRCode = await import("qrcode");
+      setQr(
+        await QRCode.toDataURL(pageUrl(), {
+          width: 288,
+          margin: 2,
+          errorCorrectionLevel: "M",
+        }),
+      );
+    } catch (error) {
+      console.error("QR code failed:", error);
+    }
+  }
+
+  if (!isDesktop) return null;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={openPopup}
+        aria-label={t("game.playOnPhone")}
+        title={t("game.playOnPhone")}
+        className={actionButton}
+      >
+        <Smartphone size={18} strokeWidth={1.5} aria-hidden="true" />
+      </button>
+
+      <dialog
+        ref={dialogRef}
+        aria-label={t("game.playOnPhone")}
+        // A click on the dark area around the popup lands on the dialog itself, and closes it.
+        onClick={(event) => {
+          if (event.target === event.currentTarget) event.currentTarget.close();
+        }}
+        className="m-auto w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-surface p-0 text-foreground backdrop:bg-black/60"
+      >
         <button
           type="button"
-          onClick={handleShare}
-          className="rounded-lg border border-border px-3 py-1.5 text-sm hover:border-brand"
+          onClick={() => dialogRef.current?.close()}
+          aria-label={t("common.close")}
+          title={t("common.close")}
+          className="absolute right-2 top-2 flex size-9 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:text-foreground"
         >
-          {t("game.share")}
+          <X size={18} strokeWidth={1.5} aria-hidden="true" />
         </button>
-        <p className="text-sm text-muted" aria-live="polite">
-          {statusText}
-        </p>
-      </div>
 
-      {isDesktop && qr ? (
-        <div className="flex items-center gap-4 self-start rounded-2xl border border-border bg-surface p-4">
-          {/* A data URL cannot go through next/image, so a plain img is correct here. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qr} width={160} height={160} alt={t("game.qrAlt")} className="rounded-lg" />
+        <div className="flex flex-col items-center gap-4 p-6 pt-10 text-center">
+          <div className="size-36 overflow-hidden rounded-xl bg-white">
+            {qr ? (
+              // A data URL cannot go through next/image, so a plain img is correct here.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={qr} width={144} height={144} alt={t("game.qrAlt")} />
+            ) : null}
+          </div>
           <div className="flex flex-col gap-1">
-            <p className="font-semibold">{t("game.playOnPhone")}</p>
+            <p className="font-medium">{t("game.playOnPhone")}</p>
             <p className="text-sm text-muted">{t("game.scanQr")}</p>
           </div>
         </div>
-      ) : null}
-    </section>
+      </dialog>
+    </>
   );
 }

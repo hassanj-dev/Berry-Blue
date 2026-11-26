@@ -1,9 +1,12 @@
 "use client";
 
+import { Flag, Send } from "lucide-react";
 import { useState, useTransition } from "react";
+import { actionButton } from "@/components/game/action-styles";
 import { t } from "@/i18n";
 import { reportGame } from "@/lib/report-actions";
 
+// A flag button. It opens a small panel under the toolbar (the toolbar is the positioned parent).
 export function GameReport({ gameId }: { gameId: string }) {
   const [reason, setReason] = useState("not_loading");
   const [status, setStatus] = useState<"idle" | "sent" | "failed">("idle");
@@ -25,30 +28,40 @@ export function GameReport({ gameId }: { gameId: string }) {
 
   return (
     <details className="text-sm">
-      <summary className="cursor-pointer text-muted">{t("game.report")}</summary>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+      <summary
+        aria-label={t("game.report")}
+        title={t("game.report")}
+        className={actionButton + " list-none [&::-webkit-details-marker]:hidden"}
+      >
+        <Flag size={18} strokeWidth={1.5} aria-hidden="true" />
+      </summary>
+      <div className="absolute right-0 top-full z-20 mt-2 flex w-72 max-w-full flex-col gap-3 rounded-xl border border-border bg-surface p-3">
         <select
           aria-label={t("game.reportReason")}
           value={reason}
           onChange={(event) => setReason(event.target.value)}
-          className="rounded-lg border border-border bg-surface px-3 py-1.5"
+          className="h-11 rounded-lg border border-border bg-background px-3"
         >
           <option value="not_loading">{t("game.reasonNotLoading")}</option>
           <option value="broken_controls">{t("game.reasonControls")}</option>
           <option value="inappropriate">{t("game.reasonInappropriate")}</option>
           <option value="other">{t("game.reasonOther")}</option>
         </select>
-        <button
-          type="button"
-          onClick={send}
-          disabled={pending}
-          className="rounded-lg border border-border px-3 py-1.5 hover:border-brand disabled:opacity-60"
-        >
-          {t("game.reportSend")}
-        </button>
-        <p className="text-muted" aria-live="polite">
-          {status === "failed" ? t("game.reportFailed") : ""}
-        </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={send}
+            disabled={pending}
+            aria-label={t("game.reportSend")}
+            title={t("game.reportSend")}
+            className={actionButton}
+          >
+            <Send size={18} strokeWidth={1.5} aria-hidden="true" />
+          </button>
+          <p className="text-muted" aria-live="polite">
+            {status === "failed" ? t("game.reportFailed") : ""}
+          </p>
+        </div>
       </div>
     </details>
   );

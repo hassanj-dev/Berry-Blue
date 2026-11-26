@@ -1,61 +1,23 @@
-import Link from "next/link";
-import { Suspense } from "react";
 import { LowInternetToggle } from "@/components/layout/LowInternetToggle";
-import { NavLink } from "@/components/layout/NavLink";
+import { Logo } from "@/components/layout/Logo";
 import { SearchBox } from "@/components/layout/SearchBox";
-import { t } from "@/i18n";
-import { mainNav } from "@/lib/nav";
-import { siteConfig } from "@/lib/site";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
+// Phone: logo and toggles on the first row, search under them. Desktop: search on the left (the logo is in the sidebar).
 export function Header() {
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 md:px-8">
-        <Link href="/" className="text-lg font-bold text-brand">
-          {siteConfig.name}
-        </Link>
+    <header className="relative z-40 border-b border-border bg-background lg:sticky lg:top-0">
+      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-2 gap-y-3 px-4 py-3 md:px-8 lg:flex-nowrap">
+        <Logo className="order-1 lg:hidden" />
 
-        <SearchBox />
+        <div className="order-2 ml-auto flex items-center lg:order-3">
+          <LowInternetToggle />
+          <ThemeToggle />
+        </div>
 
-        <nav aria-label={t("nav.main")} className="hidden md:block">
-          <Suspense fallback={null}>
-            <ul className="flex gap-1">
-              {mainNav.map((item) => (
-                <li key={item.href}>
-                  <NavLink
-                    href={item.href}
-                    className="block rounded-lg px-3 py-2 text-sm font-medium text-muted hover:text-foreground"
-                    activeClassName="bg-surface text-foreground"
-                  >
-                    {t(item.labelKey)}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </Suspense>
-        </nav>
-
-        <LowInternetToggle />
-
-        <Link
-          href="/favorites"
-          aria-label={t("favorites.link")}
-          className="flex size-10 shrink-0 items-center justify-center rounded-full text-muted hover:text-foreground"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z" />
-          </svg>
-        </Link>
+        <div className="order-3 w-full lg:order-2 lg:max-w-md lg:flex-1">
+          <SearchBox />
+        </div>
       </div>
     </header>
   );

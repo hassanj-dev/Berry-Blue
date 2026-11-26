@@ -1,14 +1,16 @@
+import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { actionButton } from "@/components/game/action-styles";
 import { DeviceIcon } from "@/components/game/DeviceIcon";
 import { FavoriteAction } from "@/components/game/FavoriteButton";
 import { GameCard } from "@/components/game/GameCard";
 import { GamePlayer } from "@/components/game/GamePlayer";
 import { PlayCount } from "@/components/game/PlayCount";
 import { GameReport } from "@/components/game/GameReport";
-import { GameShare } from "@/components/game/GameShare";
+import { GameQr, ShareButton } from "@/components/game/GameShare";
 import { GameVotes } from "@/components/game/GameVotes";
 import { t } from "@/i18n";
 import { getGameBySlug, getRelatedGames } from "@/lib/games";
@@ -47,17 +49,24 @@ async function GameContent({ params }: { params: Params }) {
   const related = await getRelatedGames(game);
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <Link href="/games" className="text-sm text-muted hover:underline">
-          &larr; {t("game.backToGames")}
+    <div className="flex flex-col gap-8 md:gap-10">
+      <div className="flex items-start gap-3">
+        <Link
+          href="/games"
+          aria-label={t("game.backToGames")}
+          title={t("game.backToGames")}
+          className={actionButton + " shrink-0"}
+        >
+          <ArrowLeft size={18} strokeWidth={1.5} aria-hidden="true" />
         </Link>
-        <h1 className="mt-2 text-2xl font-bold md:text-4xl">{game.title}</h1>
-        <p className="mt-1 text-sm capitalize">
-          <Link href={"/category/" + game.categorySlug} className="text-muted hover:underline">
-            {game.categorySlug}
-          </Link>
-        </p>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-[600] md:text-3xl">{game.title}</h1>
+          <p className="mt-1 text-sm capitalize">
+            <Link href={"/category/" + game.categorySlug} className="text-muted hover:underline">
+              {game.categorySlug}
+            </Link>
+          </p>
+        </div>
       </div>
 
       <GamePlayer
@@ -66,19 +75,30 @@ async function GameContent({ params }: { params: Params }) {
         title={game.title}
         thumbnailUrl={game.thumbnailUrl}
         embedUrl={game.embedUrl}
-        actions={<FavoriteAction slug={game.slug} />}
+        actions={
+          <>
+            <Suspense fallback={null}>
+              <GameVotes gameId={game.id} />
+            </Suspense>
+            <FavoriteAction slug={game.slug} />
+            <ShareButton title={game.title} />
+          </>
+        }
+        meta={
+          <>
+            <Suspense fallback={null}>
+              <PlayCount gameId={game.id} />
+            </Suspense>
+            <GameReport gameId={game.id} />
+            <GameQr />
+          </>
+        }
       />
-      <Suspense fallback={null}>
-        <PlayCount gameId={game.id} />
-      </Suspense>
-      <Suspense fallback={null}>
-        <GameVotes gameId={game.id} />
-      </Suspense>
-      <GameShare title={game.title} />
-      <GameReport gameId={game.id} />
 
-      <section aria-labelledby="about-heading" className="flex flex-col gap-3">
-        <h2 id="about-heading" className="text-lg font-bold">
+      <GameQr />
+
+      <section aria-labelledby="about-heading" className="flex flex-col gap-4">
+        <h2 id="about-heading" className="text-lg font-[600]">
           {t("game.about")}
         </h2>
         {game.description && <p className="text-muted">{game.description}</p>}
@@ -89,7 +109,7 @@ async function GameContent({ params }: { params: Params }) {
               <li key={tag}>
                 <Link
                   href={"/tag/" + encodeURIComponent(tag)}
-                  className="inline-block rounded-md border border-border px-2 py-1 text-xs text-muted hover:border-brand"
+                  className="inline-block rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:border-muted hover:text-foreground"
                 >
                   {tag}
                 </Link>
@@ -113,10 +133,10 @@ async function GameContent({ params }: { params: Params }) {
 
       {related.length > 0 && (
         <section aria-labelledby="related-heading">
-          <h2 id="related-heading" className="text-lg font-bold">
+          <h2 id="related-heading" className="text-lg font-[600]">
             {t("game.related")}
           </h2>
-          <ul className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <ul className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-5 xl:grid-cols-4 xl:gap-6">
             {related.map((item) => (
               <li key={item.id}>
                 <GameCard game={item} />
@@ -131,11 +151,13 @@ async function GameContent({ params }: { params: Params }) {
 
 function GamePageSkeleton() {
   return (
-    <div aria-hidden="true" className="flex animate-pulse flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <div className="h-4 w-20 rounded bg-border" />
-        <div className="h-8 w-1/2 rounded bg-border" />
-        <div className="h-4 w-24 rounded bg-border" />
+    <div aria-hidden="true" className="flex animate-pulse flex-col gap-8 md:gap-10">
+      <div className="flex items-start gap-3">
+        <div className="size-11 shrink-0 rounded-full bg-border" />
+        <div className="flex flex-col gap-2">
+          <div className="h-8 w-48 rounded bg-border" />
+          <div className="h-4 w-24 rounded bg-border" />
+        </div>
       </div>
       <div className="aspect-[4/3] w-full rounded-2xl bg-border md:aspect-video" />
     </div>

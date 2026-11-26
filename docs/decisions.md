@@ -9,3 +9,5 @@
 
 - Continue playing (homepage): reads the recent list from localStorage, loads cards via /api/games/by-slugs. Hidden when the list is empty.
 - Hover preview: CSS only, description over the thumbnail. Only for a mouse (hover: hover and pointer: fine) or keyboard focus. Low Internet Mode (5F) hides it with html[data-low-internet].
+
+- Phase 6 design: dark is the default theme, light is a choice kept in localStorage ("theme"), applied by lib/theme-script.ts before paint. Neutral graphite surfaces, one blue. --primary (#0000ff) is only for fills with white text. --brand is the blue that is readable on the current theme, used for text, icons and the focus ring. Font: Rubik, with Geist Mono for figures. Weights 400, 500, 600.

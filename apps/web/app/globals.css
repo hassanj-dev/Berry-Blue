@@ -1,27 +1,40 @@
 @import "tailwindcss";
 
+/* Dark is the default. Light applies only when <html data-theme="light"> (see lib/theme-script.ts). */
 :root {
-  --background: #ffffff;
-  --foreground: #14122b;
-  --surface: #f5f4fb;
-  --border: #e3e0f3;
-  --muted: #6b6890;
-  --brand: #5b4bdb;
-  --brand-foreground: #ffffff;
-  --accent: #2f8cff;
+  color-scheme: dark;
+  --background: #0e0e10;
+  --foreground: #f2f2f3;
+  --surface: #161618;
+  --border: #26262a;
+  --muted: #9a9aa3;
+
+  /* --primary fills buttons and the play chip (white text on it). */
+  --primary: #0000ff;
+  --primary-hover: #2a2aff;
+  --primary-foreground: #ffffff;
+
+  /* --brand is the blue you can read on dark: text, icons, active tab, focus ring. */
+  --brand: #7a85ff;
+  --brand-foreground: #0e0e10;
+  --accent: var(--brand);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f0d1f;
-    --foreground: #f1f0fb;
-    --surface: #1a1733;
-    --border: #2d2a52;
-    --muted: #a19fc8;
-    --brand: #8b7cff;
-    --brand-foreground: #0f0d1f;
-    --accent: #5aa9ff;
-  }
+html[data-theme="light"] {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #111113;
+  --surface: #f4f4f5;
+  --border: #e4e4e7;
+  --muted: #62626b;
+
+  --primary: #0000ff;
+  --primary-hover: #0000cc;
+  --primary-foreground: #ffffff;
+
+  --brand: #0000ff;
+  --brand-foreground: #ffffff;
+  --accent: var(--brand);
 }
 
 @theme inline {
@@ -30,11 +43,24 @@
   --color-surface: var(--surface);
   --color-border: var(--border);
   --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-rubik);
   --font-mono: var(--font-geist-mono);
+}
+
+/* One easing and one short duration for every transition on the site. */
+@theme {
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Interim: the old components say font-bold / font-semibold. Headings are 600 and 500 now. */
+  --font-weight-bold: 600;
+  --font-weight-semibold: 500;
 }
 
 body {
@@ -43,10 +69,14 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
 /* Hover preview: a mouse on desktop, or keyboard focus. Touch screens never see it. */
 .card-preview {
   display: none;
-  background: linear-gradient(to top, rgb(0 0 0 / 0.85), rgb(0 0 0 / 0.5) 60%, transparent);
 }
 
 @keyframes card-preview-in {
@@ -74,12 +104,11 @@ body {
   }
 }
 
-/* Phase 5F: Low Internet Mode will set data-low-internet on <html>. */
+/* Low Internet Mode: <html data-low-internet> is set by the script in app/layout.tsx. */
 html[data-low-internet] .card-preview {
   display: none !important;
 }
 
-/* Low Internet Mode: <html data-low-internet> is set by the script in app/layout.tsx. */
 .card-block {
   display: none;
   align-items: center;
@@ -94,3 +123,190 @@ html[data-low-internet] .card-block {
 html[data-low-internet] .card-thumb {
   display: none;
 }
+
+/* Horizontal rows that scroll by touch or trackpad, without a visible scrollbar. */
+.scroll-row {
+  scrollbar-width: none;
+}
+
+.scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* Page scrollbar: thin, rounded, quiet. Horizontal rows and the sidebar keep theirs hidden (.scroll-row). */
+html::-webkit-scrollbar {
+  width: 12px;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+  border: 3px solid var(--background);
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, var(--foreground) 22%, var(--background));
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--foreground) 38%, var(--background));
+}
+
+html::-webkit-scrollbar-thumb:active {
+  background-color: var(--brand);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--foreground) 30%, var(--background)) transparent;
+  }
+}
+
+/* Phone carousel (first card lines up with the heading, the next card peeks in on the right). */
+.shelf-carousel {
+  --card: min(78vw, 20rem);
+  padding-inline: 1rem;
+  scroll-padding-inline: 1rem;
+}
+
+.shelf-carousel > li {
+  width: var(--card);
+}
+
+@media (min-width: 768px) {
+  .shelf-carousel {
+    padding-inline: 2rem;
+    scroll-padding-inline: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .shelf-carousel {
+    padding-inline: 0;
+    scroll-padding-inline: 0;
+  }
+
+  .shelf-carousel > li {
+    width: auto;
+  }
+}
+
+/* Category chips (phone and tablet). NavLink sets aria-current="page" on the active one. */
+.chip {
+  display: flex;
+  height: 2.5rem;
+  align-items: center;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--surface);
+  padding-inline: 1rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  transition-property: color, background-color, border-color;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.chip:hover {
+  border-color: var(--muted);
+  color: var(--foreground);
+}
+
+.chip[aria-current="page"] {
+  border-color: var(--foreground);
+  background: var(--foreground);
+  color: var(--background);
+}
+
+/* ==== phase6-fixes:start ==== */
+/* Page scrollbar: thin, rounded, quiet. The explicit values below beat any older "hide scrollbars" rule. */
+html {
+  overflow-y: scroll;
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+
+html::-webkit-scrollbar {
+  display: block;
+  width: 14px;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 4px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+  background-color: color-mix(in srgb, var(--foreground) 28%, transparent);
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--foreground) 46%, transparent);
+}
+
+html::-webkit-scrollbar-thumb:active {
+  background-color: var(--brand);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--foreground) 35%, transparent) transparent;
+  }
+}
+
+/* Phone carousel: the first card lines up with the heading, the next card peeks in on the right. */
+.shelf-carousel {
+  padding-inline: 1rem;
+  scroll-padding-inline: 1rem;
+}
+
+.shelf-carousel > li {
+  width: min(78vw, 20rem);
+  scroll-snap-align: start;
+}
+
+@media (min-width: 768px) {
+  .shelf-carousel {
+    padding-inline: 2rem;
+    scroll-padding-inline: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .shelf-carousel {
+    padding-inline: 0;
+    scroll-padding-inline: 0;
+  }
+
+  .shelf-carousel > li {
+    width: auto;
+  }
+}
+
+/* Card stats (plays and likes) show the moment the mouse is on the card. No delay. */
+@media (hover: hover) and (pointer: fine) {
+  .game-card:hover .card-preview,
+  .game-card:has(:focus-visible) .card-preview {
+    display: block;
+    animation: card-preview-in 100ms ease-out both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-card:hover .card-preview,
+  .game-card:has(:focus-visible) .card-preview {
+    animation: none;
+  }
+}
+
+html[data-low-internet] .card-preview {
+  display: none !important;
+}
+/* ==== phase6-fixes:end ==== */

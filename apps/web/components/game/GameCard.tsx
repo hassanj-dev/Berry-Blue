@@ -1,109 +1,88 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Game } from "@berryblue/shared";
-import { DeviceIcon } from "@/components/game/DeviceIcon";
 import { FavoriteButton } from "@/components/game/FavoriteButton";
 import { ThumbBlock } from "@/components/game/ThumbBlock";
+import { PlayIcon, ThumbIcon } from "@/components/layout/icons";
 import { t } from "@/i18n";
 
 export type GameCardData = Pick<
   Game,
   "slug" | "title" | "categorySlug" | "devices" | "tags" | "thumbnailUrl"
-> & { description?: string | undefined };
+> & {
+  description?: string | undefined;
+  playCount?: number | undefined;
+  likeCount?: number | undefined;
+};
 
 type GameCardProps = {
   game: GameCardData;
   priority?: boolean;
 };
 
-const PREVIEW_MAX = 200;
+const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
 
+// The whole card is one link (the ::after on the title). Title and category sit on the art.
+// A mouse on desktop also sees the plays and the likes (.card-preview in globals.css).
+// The description, tags and devices are on the game page.
 export function GameCard({ game, priority = false }: GameCardProps) {
-  const description = (game.description ?? "").trim().slice(0, PREVIEW_MAX);
+  const hasStats = game.playCount !== undefined && game.likeCount !== undefined;
 
   return (
-    <article className="game-card group relative flex flex-col gap-2 rounded-2xl border border-border bg-surface p-3 transition hover:border-brand">
-      <div className="relative overflow-hidden rounded-xl">
-        <Image
-          src={game.thumbnailUrl}
-          alt=""
-          width={400}
-          height={400}
-          sizes="(min-width: 768px) 25vw, 50vw"
-          priority={priority}
-          className="card-thumb aspect-square w-full object-cover transition group-hover:scale-105"
-        />
-        <ThumbBlock title={game.title} className="aspect-square w-full text-5xl" />
-        {/* Only shown for a mouse on desktop. The text is also on the game page, so screen readers skip it. */}
-        {description ? (
-          <div
-            aria-hidden="true"
-            className="card-preview pointer-events-none absolute inset-x-0 bottom-0 p-3 pt-10"
+    <article className="game-card relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-2xl bg-surface">
+      <Image
+        src={game.thumbnailUrl}
+        alt=""
+        fill
+        sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 28vw, 78vw"
+        priority={priority}
+        className="card-thumb object-cover"
+      />
+      <ThumbBlock title={game.title} className="absolute inset-0 text-5xl" />
+      <FavoriteButton slug={game.slug} title={game.title} />
+
+      <div className="z-[1] flex flex-col gap-1.5 bg-linear-to-t from-black/90 via-black/55 to-transparent p-3 pr-14 pt-14 md:p-4 md:pr-16 md:pt-16">
+        <h3 className="truncate text-sm font-medium text-white md:text-base">
+          <Link
+            href={"/game/" + game.slug}
+            aria-label={t("card.playAria", { title: game.title })}
+            className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-brand"
           >
-            <p className="line-clamp-3 text-xs text-white">{description}</p>
-          </div>
-        ) : null}
-        <FavoriteButton slug={game.slug} title={game.title} />
+            {game.title}
+          </Link>
+        </h3>
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium capitalize leading-none text-white">
+            {game.categorySlug}
+          </span>
+          {hasStats ? (
+            <div aria-hidden="true" className="card-preview pointer-events-none">
+              <p className="flex items-center gap-3 text-xs font-medium tabular-nums text-white">
+                <span className="flex items-center gap-1">
+                  <PlayIcon size={12} />
+                  {compact.format(game.playCount ?? 0)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <ThumbIcon size={12} />
+                  {compact.format(game.likeCount ?? 0)}
+                </span>
+              </p>
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      <h3 className="truncate text-sm font-semibold">
-        <Link
-          href={"/game/" + game.slug}
-          aria-label={t("card.playAria", { title: game.title })}
-          className="after:absolute after:inset-0 after:rounded-2xl focus-visible:after:outline-2 focus-visible:after:outline-brand"
-        >
-          {game.title}
-        </Link>
-      </h3>
-      <p className="-mt-1 text-xs capitalize text-muted">{game.categorySlug}</p>
-
-      {game.tags.length > 0 && (
-        <ul className="flex flex-wrap gap-1">
-          {game.tags.slice(0, 2).map((tag) => (
-            <li
-              key={tag}
-              className="rounded-md border border-border px-1.5 py-0.5 text-[10px] text-muted"
-            >
-              {tag}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="mt-1 flex items-center justify-between gap-2">
-        <ul aria-label={t("card.devices")} className="flex gap-1.5 text-muted">
-          {game.devices.map((device) => (
-            <li key={device}>
-              <DeviceIcon device={device} />
-              <span className="sr-only">{t(`devices.${device}`)}</span>
-            </li>
-          ))}
-        </ul>
-        <span
-          aria-hidden="true"
-          className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground"
-        >
-          {t("common.play")}
-        </span>
-      </div>
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-3 right-3 z-[1] flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground md:bottom-4 md:right-4 md:size-10"
+      >
+        <PlayIcon size={14} />
+      </span>
     </article>
   );
 }
 
 export function GameCardSkeleton() {
-  return (
-    <div
-      className="flex animate-pulse flex-col gap-2 rounded-2xl border border-border bg-surface p-3"
-      aria-hidden="true"
-    >
-      <div className="aspect-square rounded-xl bg-border" />
-      <div className="h-4 w-3/4 rounded bg-border" />
-      <div className="h-3 w-1/3 rounded bg-border" />
-      <div className="h-4 w-1/2 rounded bg-border" />
-      <div className="mt-1 flex items-center justify-between">
-        <div className="h-4 w-12 rounded bg-border" />
-        <div className="h-7 w-14 rounded-lg bg-border" />
-      </div>
-    </div>
-  );
+  return <div aria-hidden="true" className="aspect-[4/5] animate-pulse rounded-2xl bg-border" />;
 }

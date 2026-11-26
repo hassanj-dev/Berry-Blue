@@ -107,13 +107,13 @@ export default function DesignSystemPage() {
       </Section>
 
       <Section title="Game cards">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
           {games.map((game) => (
             <GameCard key={game.slug} game={game} />
           ))}
         </div>
         <h3 className="mb-3 mt-6 text-sm font-semibold text-muted">Loading skeletons</h3>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
           {games.map((game) => (
             <GameCardSkeleton key={game.slug} />
           ))}

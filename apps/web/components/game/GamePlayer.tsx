@@ -1,9 +1,10 @@
 "use client";
 
+import { Maximize, Minimize, Play } from "lucide-react";
 import Image from "next/image";
 import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { actionButton } from "@/components/game/action-styles";
 import { ThumbBlock } from "@/components/game/ThumbBlock";
-import { Button } from "@/components/ui/Button";
 import { t } from "@/i18n";
 import { recordPlay } from "@/lib/play-actions";
 import { addRecent } from "@/lib/recent";
@@ -13,8 +14,10 @@ type GamePlayerProps = {
   title: string;
   thumbnailUrl: string;
   embedUrl: string;
-  // Buttons shown under the player (like, share ... come in later steps).
+  // Left side of the toolbar under the player: like, dislike, favorite, share.
   actions?: ReactNode;
+  // Right side, before the fullscreen button: play count, report, phone QR.
+  meta?: ReactNode;
   gameId: string;
   slug: string;
 };
@@ -45,6 +48,7 @@ export function GamePlayer({
   thumbnailUrl,
   embedUrl,
   actions,
+  meta,
 }: GamePlayerProps) {
   const [playing, setPlaying] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -88,6 +92,8 @@ export function GamePlayer({
     }
   }
 
+  const fullscreenLabel = isFullscreen ? t("game.exitFullscreen") : t("game.fullscreen");
+
   return (
     <div>
       <div
@@ -98,25 +104,14 @@ export function GamePlayer({
         )}
       >
         {playing ? (
-          <>
-            <iframe
-              src={embedUrl}
-              title={t("game.playerTitle", { title })}
-              sandbox={sandboxFor(embedUrl)}
-              allow="fullscreen"
-              allowFullScreen
-              className="absolute inset-0 size-full border-0"
-            />
-            {isFullscreen && (
-              <button
-                type="button"
-                onClick={toggleFullscreen}
-                className="absolute right-3 top-3 z-10 min-h-11 rounded-full bg-background/80 px-4 text-sm font-semibold backdrop-blur"
-              >
-                {t("game.exitFullscreen")}
-              </button>
-            )}
-          </>
+          <iframe
+            src={embedUrl}
+            title={t("game.playerTitle", { title })}
+            sandbox={sandboxFor(embedUrl)}
+            allow="fullscreen"
+            allowFullScreen
+            className="absolute inset-0 size-full border-0"
+          />
         ) : (
           <>
             <Image
@@ -132,27 +127,49 @@ export function GamePlayer({
               <button
                 type="button"
                 onClick={handlePlay}
-                className="rounded-full bg-brand px-8 py-4 text-lg font-bold text-brand-foreground"
+                className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-8 py-4 text-lg font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
               >
+                <Play size={20} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />
                 {t("game.playNow")}
               </button>
             </div>
           </>
         )}
+
+        {/* Inside the player box, so it is also there in fullscreen, before and during play. */}
+        {isFullscreen && (
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label={t("game.exitFullscreen")}
+            title={t("game.exitFullscreen")}
+            className="absolute right-3 top-3 z-10 flex size-11 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+          >
+            <Minimize size={20} strokeWidth={1.5} aria-hidden="true" />
+          </button>
+        )}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="relative mt-4 flex flex-wrap items-center gap-2">
         {actions}
-        {canFullscreen && (
-          <Button
-            variant="secondary"
-            className="ml-auto"
-            disabled={!playing}
-            onClick={toggleFullscreen}
-          >
-            {isFullscreen ? t("game.exitFullscreen") : t("game.fullscreen")}
-          </Button>
-        )}
+        <div className="ml-auto flex items-center gap-3">
+          {meta}
+          {canFullscreen && (
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              aria-label={fullscreenLabel}
+              title={fullscreenLabel}
+              className={actionButton}
+            >
+              {isFullscreen ? (
+                <Minimize size={18} strokeWidth={1.5} aria-hidden="true" />
+              ) : (
+                <Maximize size={18} strokeWidth={1.5} aria-hidden="true" />
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

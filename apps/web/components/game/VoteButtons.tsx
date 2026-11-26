@@ -1,6 +1,8 @@
 "use client";
 
+import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { useState, useSyncExternalStore, useTransition } from "react";
+import { actionButton } from "@/components/game/action-styles";
 import { t } from "@/i18n";
 import type { VoteCounts } from "@/lib/vote-count";
 import { castVote } from "@/lib/vote-actions";
@@ -51,8 +53,6 @@ function applyVote(counts: VoteCounts, from: Vote, to: Vote): VoteCounts {
   };
 }
 
-const buttonClass = "rounded-lg border px-3 py-1.5 text-sm hover:border-brand disabled:opacity-60 ";
-
 export function VoteButtons({
   gameId,
   initialCounts,
@@ -93,34 +93,55 @@ export function VoteButtons({
 
   const total = counts.likes + counts.dislikes;
   const percent = total === 0 ? 0 : Math.round((counts.likes / total) * 100);
+  const likes = counts.likes.toLocaleString("en-US");
+  const dislikes = counts.dislikes.toLocaleString("en-US");
+  const summary =
+    total === 0
+      ? t("game.noVotes")
+      : t("game.voteSummary", {
+          percent: String(percent),
+          count: total.toLocaleString("en-US"),
+        });
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex items-center gap-2">
       <button
         type="button"
         aria-pressed={vote === 1}
+        aria-label={t("game.like") + " (" + likes + ")"}
+        title={t("game.like")}
         disabled={pending}
         onClick={() => choose(1)}
-        className={buttonClass + (vote === 1 ? "border-brand" : "border-border")}
+        className={actionButton}
       >
-        {t("game.like")} ({counts.likes.toLocaleString("en-US")})
+        <ThumbsUp
+          size={18}
+          strokeWidth={1.5}
+          fill={vote === 1 ? "currentColor" : "none"}
+          aria-hidden="true"
+        />
+        <span className="tabular-nums">{likes}</span>
       </button>
       <button
         type="button"
         aria-pressed={vote === -1}
+        aria-label={t("game.dislike") + " (" + dislikes + ")"}
+        title={t("game.dislike")}
         disabled={pending}
         onClick={() => choose(-1)}
-        className={buttonClass + (vote === -1 ? "border-brand" : "border-border")}
+        className={actionButton}
       >
-        {t("game.dislike")} ({counts.dislikes.toLocaleString("en-US")})
+        <ThumbsDown
+          size={18}
+          strokeWidth={1.5}
+          fill={vote === -1 ? "currentColor" : "none"}
+          aria-hidden="true"
+        />
+        <span className="tabular-nums">{dislikes}</span>
       </button>
-      <p className="text-sm text-muted" aria-live="polite">
-        {total === 0
-          ? t("game.noVotes")
-          : t("game.voteSummary", {
-              percent: String(percent),
-              count: total.toLocaleString("en-US"),
-            })}
+      <p className="text-sm tabular-nums text-muted" aria-live="polite" title={summary}>
+        <span className="sr-only">{summary}</span>
+        {total > 0 ? <span aria-hidden="true">{percent}%</span> : null}
       </p>
     </div>
   );

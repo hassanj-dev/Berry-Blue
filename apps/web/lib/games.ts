@@ -1,9 +1,17 @@
 import { cacheLife } from "next/cache";
-import { categorySchema, gameSchema, type Category, type Game } from "@berryblue/shared";
+import {
+  categorySchema,
+  gameSchema,
+  type Category,
+  type Game as BaseGame,
+} from "@berryblue/shared";
 import { PAGE_SIZE, type GamesFilters, type SortName } from "@/lib/games-query";
 import { createPublicClient } from "@/lib/supabase/public";
 
 export type ShelfName = SortName;
+
+// A game plus the counters the cards show on hover.
+export type Game = BaseGame & { playCount: number; likeCount: number; dislikeCount: number };
 
 const SORT_COLUMN = {
   trending: "trending_score",
@@ -12,11 +20,11 @@ const SORT_COLUMN = {
 } as const;
 
 const GAME_COLUMNS =
-  "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, categories(slug)";
+  "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, play_count, like_count, dislike_count, categories(slug)";
 
 // "!inner" means: only games whose category matches the filter.
 const GAME_COLUMNS_INNER =
-  "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, categories!inner(slug)";
+  "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, play_count, like_count, dislike_count, categories!inner(slug)";
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
 
@@ -25,6 +33,22 @@ export const LISTING_LIMIT = 48;
 
 // Database ki row (snake_case) ko Game (camelCase) mein badalta hai aur Zod se check karta hai.
 function parseRow(row: unknown) {
+  const base = parseBase(row);
+  if (!base.success) return base;
+
+  const r = row as Record<string, unknown>;
+  return {
+    success: true as const,
+    data: {
+      ...base.data,
+      playCount: Number(r.play_count) || 0,
+      likeCount: Number(r.like_count) || 0,
+      dislikeCount: Number(r.dislike_count) || 0,
+    },
+  };
+}
+
+function parseBase(row: unknown) {
   const r = row as Record<string, unknown>;
   const category = r.categories as { slug?: string } | null;
 

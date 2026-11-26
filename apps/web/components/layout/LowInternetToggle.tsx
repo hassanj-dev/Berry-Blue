@@ -1,39 +1,38 @@
 "use client";
 
-import { SignalHigh, SignalLow, WifiOff } from "lucide-react";
-import { useEffect } from "react";
+import { Wifi, WifiLow, WifiOff } from "lucide-react";
 import { t } from "@/i18n";
 import { cn } from "@/lib/cn";
-import { applyAutoLowInternet, useNetworkStatus } from "@/lib/low-internet";
+import { useNetworkStatus } from "@/lib/low-internet";
 
-// An indicator, not a button: the mode follows the connection on its own.
+// An indicator, not a button: it only shows the connection status.
 export function LowInternetToggle() {
   const status = useNetworkStatus();
-
-  useEffect(() => {
-    applyAutoLowInternet();
-  }, [status]);
-
   const bad = status !== "ok";
-  const Signal = status === "offline" ? WifiOff : bad ? SignalLow : SignalHigh;
+  const Glyph = status === "offline" ? WifiOff : bad ? WifiLow : Wifi;
+
   const text =
     status === "offline"
       ? t("lowInternet.offline")
       : status === "slow"
         ? t("lowInternet.slow")
-        : "";
+        : t("lowInternet.online");
   const shortText =
     status === "offline" ? t("lowInternet.offlineShort") : t("lowInternet.slowShort");
 
   return (
     <div
-      title={text || undefined}
+      title={text}
       className={cn(
-        "flex h-10 min-w-10 shrink-0 items-center justify-center gap-1.5 px-2.5",
-        bad ? "text-red-400 [html[data-theme=light]_&]:text-red-700" : "text-muted",
+        "mr-1 flex h-9 min-w-9 shrink-0 items-center justify-center gap-2 rounded-full",
+        bad
+          ? "bg-red-500/15 px-3 text-red-400 [html[data-theme=light]_&]:text-red-700"
+          : "text-muted",
       )}
     >
-      <Signal size={20} strokeWidth={bad ? 2 : 1.5} aria-hidden="true" />
+      <span className="relative flex">
+        <Glyph size={18} strokeWidth={2} aria-hidden="true" />
+      </span>
       {bad && (
         <span aria-hidden="true" className="whitespace-nowrap text-xs font-medium">
           <span className="sm:hidden">{shortText}</span>

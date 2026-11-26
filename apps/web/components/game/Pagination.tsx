@@ -59,7 +59,7 @@ export function Pagination({ sort, filters, page, pageCount }: PaginationProps) 
                 aria-label={t("games.pagination.page", { page: item })}
                 className={cn(
                   base,
-                  item === page ? "bg-brand text-brand-foreground" : "bg-surface",
+                  item === page ? "bg-primary text-primary-foreground" : "bg-surface",
                 )}
               >
                 {item}

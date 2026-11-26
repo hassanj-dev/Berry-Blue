@@ -4,10 +4,9 @@ import { Suspense } from "react";
 import { GameCard, GameCardSkeleton } from "@/components/game/GameCard";
 import { GamesFilterBar } from "@/components/game/GamesFilterBar";
 import { Pagination } from "@/components/game/Pagination";
-import { SortTabs } from "@/components/game/SortTabs";
 import { t } from "@/i18n";
 import { getCategories, getGamesPage } from "@/lib/games";
-import { PAGE_SIZE, parseGamesQuery, type GamesFilters } from "@/lib/games-query";
+import { PAGE_SIZE, parseGamesQuery, type GamesFilters, type SortName } from "@/lib/games-query";
 import { getTags } from "@/lib/tags";
 
 export const metadata: Metadata = {
@@ -65,7 +64,7 @@ function ResultsBody({
   hasFilters,
   result,
 }: {
-  sort: Parameters<typeof SortTabs>[0]["current"];
+  sort: SortName;
   page: number;
   filters: GamesFilters;
   hasFilters: boolean;
@@ -79,8 +78,6 @@ function ResultsBody({
 
   return (
     <>
-      <SortTabs current={sort} filters={filters} />
-
       {result.total === 0 ? (
         <p className="text-muted">{hasFilters ? t("games.noMatch") : t("games.empty")}</p>
       ) : (

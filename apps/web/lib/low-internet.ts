@@ -1,9 +1,8 @@
 import { useSyncExternalStore } from "react";
-import { LOW_INTERNET_ATTR } from "@/lib/low-internet-script";
 
 export type NetworkStatus = "ok" | "slow" | "offline";
 
-type Connection = EventTarget & { effectiveType?: string; saveData?: boolean };
+type Connection = EventTarget & { effectiveType?: string };
 
 // Chrome, Edge and most Android browsers have this. Safari and Firefox do not.
 function getConnection() {
@@ -31,13 +30,4 @@ function subscribeNetwork(listener: () => void) {
 
 export function useNetworkStatus() {
   return useSyncExternalStore(subscribeNetwork, readStatus, () => "ok" as NetworkStatus);
-}
-
-// Turns the low internet look on or off to match the connection.
-export function applyAutoLowInternet() {
-  const status = readStatus();
-  if (status === "offline") return;
-
-  const on = status === "slow" || getConnection()?.saveData === true;
-  document.documentElement.toggleAttribute(LOW_INTERNET_ATTR, on);
 }

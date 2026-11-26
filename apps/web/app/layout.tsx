@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Rubik } from "next/font/google";
 import { ServiceWorkerRegister } from "@/components/layout/ServiceWorkerRegister";
-import { lowInternetInitScript } from "@/lib/low-internet-script";
 import { siteConfig } from "@/lib/site";
 import { themeInitScript } from "@/lib/theme-script";
 import "./globals.css";
@@ -30,7 +29,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    // suppressHydrationWarning: the scripts below add data-theme and data-low-internet to <html> before React starts.
+    // suppressHydrationWarning: the script below adds data-theme to <html> before React starts.
     <html
       lang="en"
       suppressHydrationWarning
@@ -38,7 +37,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-        <script dangerouslySetInnerHTML={{ __html: lowInternetInitScript }} />
       </head>
       <body className="min-h-full flex flex-col">
         {children}

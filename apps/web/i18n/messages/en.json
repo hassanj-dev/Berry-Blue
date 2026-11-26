@@ -7,6 +7,7 @@
     "slow": "Slow internet",
     "slowShort": "Slow",
     "offline": "No internet",
+    "online": "Internet is fine",
     "offlineShort": "Offline",
     "label": "Low Internet Mode",
     "title": "Low Internet Mode: shows colours instead of pictures"
@@ -89,7 +90,8 @@
       "tag": "Tags",
       "all": "All",
       "anyDevice": "Any device",
-      "clear": "Clear filters"
+      "clear": "Clear filters",
+      "remove": "Remove filter {name}"
     },
     "showing": "Showing {from}-{to} of {total} games",
     "sortBy": "Sort games",

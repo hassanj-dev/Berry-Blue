@@ -92,6 +92,15 @@
     "copyright": "© {name}. All rights reserved."
   },
   "home": {
+    "slider": {
+      "label": "Featured games",
+      "previous": "Previous game",
+      "next": "Next game",
+      "goTo": "Show game {n}",
+      "pause": "Pause slideshow",
+      "play": "Start slideshow",
+      "slide": "Game {n} of {total}"
+    },
     "title": "Play free games instantly",
     "subtitle": "No downloads. Works on phone, tablet and computer.",
     "viewAll": "View all",

@@ -1,30 +1,34 @@
 import { Suspense } from "react";
 import { ContinuePlaying } from "@/components/game/ContinuePlaying";
 import { GameShelf, GameShelfSkeleton } from "@/components/game/GameShelf";
-import { HomeHero } from "@/components/game/HomeHero";
+import { HomeSlider, HomeSliderSkeleton } from "@/components/game/HomeSlider";
 import { CategoryTabs } from "@/components/layout/CategoryTabs";
 import { t } from "@/i18n";
+import { HOME_SLIDES, HOME_TRENDING_LIMIT } from "@/lib/home";
 
 export default function HomePage() {
   return (
-    <main className="flex flex-col gap-8 md:gap-10 lg:gap-12">
-      <div>
-        <h1 className="text-2xl font-[600] md:text-3xl">{t("home.title")}</h1>
-        <p className="mt-1 text-sm text-muted md:text-base">{t("home.subtitle")}</p>
-      </div>
+    <main className="flex flex-col gap-6 md:gap-8 lg:gap-10">
+      {/* Not shown: only for screen readers and search engines. */}
+      <h1 className="sr-only">{t("home.title")}</h1>
 
-      <Suspense fallback={null}>
-        <CategoryTabs />
+      <Suspense fallback={<HomeSliderSkeleton />}>
+        <HomeSlider />
       </Suspense>
 
       <Suspense fallback={null}>
-        <HomeHero />
+        <CategoryTabs highlightAll />
       </Suspense>
 
       <ContinuePlaying />
 
       <Suspense fallback={<GameShelfSkeleton />}>
-        <GameShelf shelf="trending" priority limit={9} variant="carousel" hideFirstOnDesktop />
+        <GameShelf
+          shelf="trending"
+          limit={HOME_TRENDING_LIMIT}
+          variant="carousel"
+          hideFirst={HOME_SLIDES}
+        />
       </Suspense>
       <Suspense fallback={<GameShelfSkeleton />}>
         <GameShelf shelf="new" />

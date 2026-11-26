@@ -321,3 +321,29 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 /* ==== mobile-safe-area:end ==== */
+
+/* ==== home-slider:start ==== */
+/* Home slider: the active dot fills over the slide time; the slide changes when it ends. */
+@keyframes slider-dot-fill {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.slider-dot-fill {
+  transform-origin: center;
+  animation-name: slider-dot-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slider-dot-fill {
+    animation: none;
+    transform: scale(1);
+  }
+}
+/* ==== home-slider:end ==== */

@@ -10,8 +10,8 @@ type GameShelfProps = {
   limit?: number;
   // "carousel": big cards that snap on phones. Both variants are a grid on desktop.
   variant?: "row" | "carousel";
-  // Desktop shows the first game in the hero banner, so the grid skips it.
-  hideFirstOnDesktop?: boolean;
+  // The first games are in the slider above, so the list skips them.
+  hideFirst?: number;
 };
 
 export async function GameShelf({
@@ -19,9 +19,10 @@ export async function GameShelf({
   priority = false,
   limit = 8,
   variant = "row",
-  hideFirstOnDesktop = false,
+  hideFirst = 0,
 }: GameShelfProps) {
-  const games = await getShelf(shelf, limit);
+  const all = await getShelf(shelf, limit);
+  const games = hideFirst > 0 ? all.slice(hideFirst) : all;
   const headingId = "shelf-" + shelf;
   const carousel = variant === "carousel";
 
@@ -54,11 +55,7 @@ export async function GameShelf({
           {games.map((game, index) => (
             <li
               key={game.id}
-              className={cn(
-                "shrink-0",
-                carousel ? "snap-start" : "w-40 snap-start lg:w-auto",
-                hideFirstOnDesktop && "lg:first:hidden",
-              )}
+              className={cn("shrink-0", carousel ? "snap-start" : "w-40 snap-start lg:w-auto")}
             >
               <GameCard game={game} priority={priority && index < 4} />
             </li>

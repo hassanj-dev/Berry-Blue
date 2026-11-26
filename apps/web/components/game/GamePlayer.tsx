@@ -102,7 +102,7 @@ export function GamePlayer({
       <div
         ref={boxRef}
         className={cn(
-          "relative aspect-[4/3] w-full overflow-hidden border border-border bg-surface md:aspect-video",
+          "relative aspect-video w-full overflow-hidden border border-border bg-surface",
           isFullscreen ? "rounded-none border-0" : "rounded-2xl",
         )}
       >
@@ -130,13 +130,26 @@ export function GamePlayer({
               <button
                 type="button"
                 onClick={handlePlay}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-8 py-4 text-lg font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+                className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-8 py-4 text-lg font-medium text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-white/10 transition-[transform,background-color,box-shadow] duration-150 hover:bg-primary-hover hover:shadow-primary/40 active:scale-[0.97] max-sm:px-5 max-sm:py-2.5 max-sm:text-[15px] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
                 <Play size={20} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />
                 {t("game.playNow")}
               </button>
             </div>
           </>
+        )}
+
+        {/* Desktop: the enter-fullscreen button sits on the player, bottom right. Phones keep it in the toolbar. */}
+        {canFullscreen && !isFullscreen && (
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label={fullscreenLabel}
+            title={fullscreenLabel}
+            className="absolute bottom-3 right-3 z-10 flex size-10 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80 max-sm:hidden"
+          >
+            <Maximize size={18} strokeWidth={1.5} aria-hidden="true" />
+          </button>
         )}
 
         {/* Inside the player box, so it is also there in fullscreen, before and during play. */}
@@ -153,9 +166,9 @@ export function GamePlayer({
         )}
       </div>
 
-      <div className="relative mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+      <div className="relative mt-3 flex flex-wrap items-center justify-between gap-2 sm:mt-4 sm:justify-start">
         <div className="flex flex-wrap items-center gap-2">{stats}</div>
-        <div className="flex items-center justify-between gap-2 sm:flex-1 sm:justify-start">
+        <div className="flex items-center gap-2 max-sm:ml-auto max-sm:gap-1.5 sm:flex-1 sm:justify-start">
           {actions}
           <div className="contents sm:ml-auto sm:flex sm:items-center sm:gap-2">
             {meta}
@@ -165,7 +178,7 @@ export function GamePlayer({
                 onClick={toggleFullscreen}
                 aria-label={fullscreenLabel}
                 title={fullscreenLabel}
-                className={actionButton}
+                className={actionButton + " sm:hidden"}
               >
                 {isFullscreen ? (
                   <Minimize size={18} strokeWidth={1.5} aria-hidden="true" />

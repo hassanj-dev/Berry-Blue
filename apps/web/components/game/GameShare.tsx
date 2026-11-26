@@ -73,7 +73,10 @@ export function ShareButton({ title }: { title: string }) {
       >
         <Share2 size={18} strokeWidth={1.5} aria-hidden="true" />
       </button>
-      <span aria-live="polite" className="text-sm text-muted empty:hidden">
+      <span
+        aria-live="polite"
+        className="absolute right-0 top-full z-20 mt-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-muted empty:hidden"
+      >
         {statusText}
       </span>
     </>

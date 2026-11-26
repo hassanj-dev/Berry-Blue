@@ -1,0 +1,485 @@
+===== apps\web\app\(public)\layout.tsx =====
+import type { ReactNode } from "react";
+import { BottomNav } from "@/components/layout/BottomNav";
+import { Footer } from "@/components/layout/Footer";
+import { Header } from "@/components/layout/Header";
+import { Sidebar } from "@/components/layout/Sidebar";
+
+export default function PublicLayout({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex min-h-dvh">
+      <Sidebar />
+      <div className="flex min-w-0 flex-1 flex-col overflow-x-clip pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+        <Header />
+        <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 md:px-8 md:py-8">
+          {children}
+        </div>
+        <div className="lg:hidden">
+          <Footer />
+        </div>
+        <BottomNav />
+      </div>
+    </div>
+  );
+}
+
+===== apps\web\app\layout.tsx =====
+import type { Metadata, Viewport } from "next";
+import { Geist_Mono, Rubik } from "next/font/google";
+import { ServiceWorkerRegister } from "@/components/layout/ServiceWorkerRegister";
+import { lowInternetInitScript } from "@/lib/low-internet-script";
+import { siteConfig } from "@/lib/site";
+import { themeInitScript } from "@/lib/theme-script";
+import "./globals.css";
+
+const rubik = Rubik({
+  variable: "--font-rubik",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: siteConfig.name,
+  description: siteConfig.description,
+  applicationName: siteConfig.name,
+  appleWebApp: { capable: true, title: siteConfig.name, statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: siteConfig.themeColor,
+  viewportFit: "cover",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    // suppressHydrationWarning: the scripts below add data-theme and data-low-internet to <html> before React starts.
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${rubik.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: lowInternetInitScript }} />
+      </head>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <ServiceWorkerRegister />
+      </body>
+    </html>
+  );
+}
+
+===== apps\web\components\game\FavoriteButton.tsx =====
+"use client";
+
+import { actionButton } from "@/components/game/action-styles";
+import { Icon } from "@/components/layout/icons";
+import { t } from "@/i18n";
+import { cn } from "@/lib/cn";
+import { toggleFavorite, useFavorites } from "@/lib/favorites";
+
+// Heart on top of a game card. z-10 keeps it above the card's full-size link.
+export function FavoriteButton({ slug, title }: { slug: string; title: string }) {
+  const saved = useFavorites().includes(slug);
+
+  return (
+    <button
+      type="button"
+      aria-pressed={saved}
+      aria-label={t("card.favorite") + ": " + title}
+      onClick={() => toggleFavorite(slug)}
+      className={cn(
+        "absolute right-2 top-2 z-10 flex size-10 cursor-pointer items-center justify-center rounded-full transition-colors",
+        saved ? "bg-primary text-primary-foreground" : "bg-black/50 text-white hover:bg-black/70",
+      )}
+    >
+      <Icon name="heart" size={18} filled={saved} />
+    </button>
+  );
+}
+
+// Round heart button on the game page (and in the home hero).
+export function FavoriteAction({ slug }: { slug: string }) {
+  const saved = useFavorites().includes(slug);
+
+  return (
+    <button
+      type="button"
+      aria-pressed={saved}
+      aria-label={t("favorites.action")}
+      title={t("favorites.action")}
+      onClick={() => toggleFavorite(slug)}
+      className={actionButton}
+    >
+      <Icon name="heart" size={18} filled={saved} />
+    </button>
+  );
+}
+
+===== apps\web\components\game\GameCard.tsx =====
+import Image from "next/image";
+import Link from "next/link";
+import type { Game } from "@berryblue/shared";
+import { FavoriteButton } from "@/components/game/FavoriteButton";
+import { ThumbBlock } from "@/components/game/ThumbBlock";
+import { PlayIcon, ThumbIcon } from "@/components/layout/icons";
+import { t } from "@/i18n";
+
+export type GameCardData = Pick<
+  Game,
+  "slug" | "title" | "categorySlug" | "devices" | "tags" | "thumbnailUrl"
+> & {
+  description?: string | undefined;
+  playCount?: number | undefined;
+  likeCount?: number | undefined;
+};
+
+type GameCardProps = {
+  game: GameCardData;
+  priority?: boolean;
+};
+
+const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
+
+// The whole card is one link (the ::after on the title). Title and category sit on the art.
+// A mouse on desktop also sees the plays and the likes (.card-preview in globals.css).
+// The description, tags and devices are on the game page.
+export function GameCard({ game, priority = false }: GameCardProps) {
+  const hasStats = game.playCount !== undefined && game.likeCount !== undefined;
+
+  return (
+    <article className="game-card relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-2xl bg-surface">
+      <Image
+        src={game.thumbnailUrl}
+        alt=""
+        fill
+        sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 28vw, 78vw"
+        priority={priority}
+        className="card-thumb object-cover"
+      />
+      <ThumbBlock title={game.title} className="absolute inset-0 text-5xl" />
+      <FavoriteButton slug={game.slug} title={game.title} />
+
+      <div className="z-[1] flex flex-col gap-1.5 bg-linear-to-t from-black/90 via-black/55 to-transparent p-3 pr-14 pt-14 md:p-4 md:pr-16 md:pt-16">
+        <h3 className="truncate text-sm font-medium text-white md:text-base">
+          <Link
+            href={"/game/" + game.slug}
+            aria-label={t("card.playAria", { title: game.title })}
+            className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-brand"
+          >
+            {game.title}
+          </Link>
+        </h3>
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium capitalize leading-none text-white">
+            {game.categorySlug}
+          </span>
+          {hasStats ? (
+            <div aria-hidden="true" className="card-preview pointer-events-none">
+              <p className="flex items-center gap-3 text-xs font-medium tabular-nums text-white">
+                <span className="flex items-center gap-1">
+                  <PlayIcon size={12} />
+                  {compact.format(game.playCount ?? 0)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <ThumbIcon size={12} />
+                  {compact.format(game.likeCount ?? 0)}
+                </span>
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-3 right-3 z-[1] flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground md:bottom-4 md:right-4 md:size-10"
+      >
+        <PlayIcon size={14} />
+      </span>
+    </article>
+  );
+}
+
+export function GameCardSkeleton() {
+  return <div aria-hidden="true" className="aspect-[4/5] animate-pulse rounded-2xl bg-border" />;
+}
+
+===== apps\web\components\game\GameRating.tsx =====
+import { Star } from "lucide-react";
+import { t } from "@/i18n";
+import { cn } from "@/lib/cn";
+import { getVoteCounts } from "@/lib/vote-count";
+
+// Rating = the share of likes among all votes. Hidden until the first vote.
+// It is read when the page loads, so after a vote it updates on the next load.
+export async function GameRating({ gameId, className }: { gameId: string; className?: string }) {
+  const counts = await getVoteCounts(gameId);
+  if (!counts) return null;
+
+  const total = counts.likes + counts.dislikes;
+  if (total === 0) return null;
+
+  const percent = Math.round((counts.likes / total) * 100);
+  const summary = t("game.voteSummary", {
+    percent: String(percent),
+    count: total.toLocaleString("en-US"),
+  });
+
+  return (
+    <p
+      className={cn("flex items-center gap-1.5 text-sm tabular-nums text-muted", className)}
+      title={summary}
+    >
+      <Star
+        size={16}
+        strokeWidth={1.5}
+        fill="currentColor"
+        className="text-amber-400"
+        aria-hidden="true"
+      />
+      <span aria-hidden="true">{percent}%</span>
+      <span className="sr-only">{summary}</span>
+    </p>
+  );
+}
+
+===== apps\web\components\layout\BottomNav.tsx =====
+import { Suspense } from "react";
+import { Icon } from "@/components/layout/icons";
+import { NavLink } from "@/components/layout/NavLink";
+import { t } from "@/i18n";
+import { mainNav } from "@/lib/nav";
+
+// Fixed phone bar. The safe-area padding keeps it clear of the home indicator and the notch.
+// The public layout leaves the same space under the page, so nothing is hidden behind the bar.
+export function BottomNav() {
+  return (
+    <nav
+      aria-label={t("nav.bottom")}
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] backdrop-blur-xl lg:hidden"
+    >
+      <Suspense fallback={null}>
+        <ul className="mx-auto flex max-w-md px-2">
+          {mainNav.map((item) => (
+            <li key={item.href} className="flex-1">
+              <NavLink
+                href={item.href}
+                className="relative flex h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium leading-none text-muted transition-colors hover:text-foreground"
+                activeClassName="text-foreground before:absolute before:top-0 before:h-0.5 before:w-7 before:rounded-full before:bg-brand"
+              >
+                <Icon name={item.icon} size={22} />
+                <span>{t(item.labelKey)}</span>
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </Suspense>
+    </nav>
+  );
+}
+
+===== apps\web\components\layout\Header.tsx =====
+import { LowInternetToggle } from "@/components/layout/LowInternetToggle";
+import { Logo } from "@/components/layout/Logo";
+import { SearchBox } from "@/components/layout/SearchBox";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
+
+// Phone: logo and toggles on the first row, search under them. Desktop: search on the left (the logo is in the sidebar).
+export function Header() {
+  return (
+    <header className="relative z-40 border-b border-border bg-background lg:sticky lg:top-0">
+      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-2 gap-y-3 px-4 py-3 md:px-8 lg:flex-nowrap">
+        <Logo className="order-1 lg:hidden" />
+
+        <div className="order-2 ml-auto flex items-center lg:order-3">
+          <LowInternetToggle />
+          <ThemeToggle />
+        </div>
+
+        <div className="order-3 w-full lg:order-2 lg:max-w-md lg:flex-1">
+          <SearchBox />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+===== apps\web\components\layout\SearchBox.tsx =====
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useId, useState, type KeyboardEvent } from "react";
+import { Icon } from "@/components/layout/icons";
+import { t } from "@/i18n";
+import { SEARCH_MAX_LENGTH, SEARCH_MIN_LENGTH, SUGGEST_MIN_LENGTH } from "@/lib/search-query";
+
+type Suggestion = { title: string; slug: string };
+
+function tidy(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+// The response is not trusted: keep only items that look right.
+function parseSuggestions(data: unknown): Suggestion[] {
+  if (typeof data !== "object" || data === null || !("suggestions" in data)) return [];
+  if (!Array.isArray(data.suggestions)) return [];
+
+  return data.suggestions.filter(
+    (item): item is Suggestion =>
+      typeof item === "object" &&
+      item !== null &&
+      typeof item.title === "string" &&
+      typeof item.slug === "string",
+  );
+}
+
+export function SearchBox() {
+  const router = useRouter();
+  const listId = useId();
+  const [value, setValue] = useState("");
+  const [items, setItems] = useState<Suggestion[]>([]);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+
+  const text = tidy(value);
+  const visible = open && text.length >= SUGGEST_MIN_LENGTH && items.length > 0;
+
+  // Wait 200 ms after the last key, and cancel the old request when a new letter is typed.
+  useEffect(() => {
+    if (text.length < SUGGEST_MIN_LENGTH) return;
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch("/api/search/suggest?q=" + encodeURIComponent(text), {
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("status " + response.status);
+        setItems(parseSuggestions(await response.json()));
+        setActive(-1);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error("Search suggestions failed:", error);
+        setItems([]);
+      }
+    }, 200);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [text]);
+
+  function openGame(slug: string) {
+    setOpen(false);
+    setActive(-1);
+    setValue("");
+    setItems([]);
+    router.push("/game/" + slug);
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") {
+      setOpen(false);
+      setActive(-1);
+      return;
+    }
+
+    if (event.key === "Enter") {
+      const chosen = visible ? items[active] : undefined;
+      if (chosen) {
+        event.preventDefault();
+        openGame(chosen.slug);
+      }
+      return;
+    }
+
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    if (items.length === 0) return;
+
+    event.preventDefault();
+    if (!visible) {
+      setOpen(true);
+      return;
+    }
+
+    const count = items.length;
+    setActive((current) =>
+      event.key === "ArrowDown" ? (current + 1) % count : current <= 0 ? count - 1 : current - 1,
+    );
+  }
+
+  return (
+    // A plain GET form: Enter still opens /search?q=... even without JavaScript.
+    <form action="/search" role="search" className="relative w-full min-w-0">
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+      >
+        <Icon name="search" size={18} />
+      </span>
+      <input
+        type="search"
+        name="q"
+        required
+        minLength={SEARCH_MIN_LENGTH}
+        maxLength={SEARCH_MAX_LENGTH}
+        enterKeyHint="search"
+        autoComplete="off"
+        role="combobox"
+        aria-expanded={visible}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={visible && active >= 0 ? `${listId}-${active}` : undefined}
+        aria-label={t("search.label")}
+        placeholder={t("search.placeholder")}
+        value={value}
+        onChange={(event) => {
+          setValue(event.target.value);
+          setOpen(true);
+          setActive(-1);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onKeyDown={onKeyDown}
+        className="h-11 w-full rounded-xl border border-border bg-surface pl-11 pr-4 text-sm placeholder:text-muted"
+      />
+
+      {visible ? (
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label={t("search.suggestions")}
+          className="absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-lg"
+        >
+          {items.map((item, index) => (
+            <li
+              key={item.slug}
+              id={`${listId}-${index}`}
+              role="option"
+              aria-selected={index === active}
+              // mousedown would take focus away from the input and close the list before the click lands.
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => openGame(item.slug)}
+              onMouseEnter={() => setActive(index)}
+              className={
+                "cursor-pointer truncate px-4 py-2 text-sm " +
+                (index === active ? "bg-background text-foreground" : "text-muted")
+              }
+            >
+              {item.title}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </form>
+  );
+}
+

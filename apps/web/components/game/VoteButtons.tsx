@@ -104,7 +104,7 @@ export function VoteButtons({
         });
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 max-sm:gap-0 max-sm:[&>button:nth-child(1)]:rounded-r-none max-sm:[&>button:nth-child(2)]:-ml-px max-sm:[&>button:nth-child(2)]:rounded-l-none">
       <button
         type="button"
         aria-pressed={vote === 1}
@@ -139,9 +139,9 @@ export function VoteButtons({
         />
         <span className="tabular-nums">{dislikes}</span>
       </button>
-      <p className="text-sm tabular-nums text-muted" aria-live="polite" title={summary}>
-        <span className="sr-only">{summary}</span>
-        {total > 0 ? <span aria-hidden="true">{percent}%</span> : null}
+      {/* Screen readers only: the vote summary is read out, but no percentage is shown on screen. */}
+      <p className="sr-only" aria-live="polite" title={summary}>
+        {summary}
       </p>
     </div>
   );

@@ -102,6 +102,8 @@
     }
   },
   "game": {
+    "seeAll": "See all",
+    "likedLabel": "liked",
     "playNow": "Play now",
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit fullscreen",

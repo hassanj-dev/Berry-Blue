@@ -1,3 +1,4 @@
+import { ThumbsUp } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Game } from "@berryblue/shared";
@@ -42,7 +43,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
       <FavoriteButton slug={game.slug} title={game.title} />
 
       <div className="z-[1] flex flex-col gap-1.5 bg-linear-to-t from-black/90 via-black/55 to-transparent p-3 pr-14 pt-14 md:p-4 md:pr-16 md:pt-16">
-        <h3 className="truncate text-sm font-medium text-white md:text-base">
+        <h3 className="truncate text-sm font-medium text-white max-sm:line-clamp-2 max-sm:whitespace-normal max-sm:leading-snug md:text-base">
           <Link
             href={"/game/" + game.slug}
             aria-label={t("card.playAria", { title: game.title })}
@@ -56,6 +57,12 @@ export function GameCard({ game, priority = false }: GameCardProps) {
           <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium capitalize leading-none text-white">
             {game.categorySlug}
           </span>
+          {hasStats ? (
+            <span className="flex items-center gap-1 text-xs font-medium tabular-nums text-white sm:hidden">
+              <ThumbsUp size={12} strokeWidth={1.5} aria-hidden="true" />
+              {compact.format(game.likeCount ?? 0)}
+            </span>
+          ) : null}
           {hasStats ? (
             <div aria-hidden="true" className="card-preview pointer-events-none">
               <p className="flex items-center gap-3 text-xs font-medium tabular-nums text-white">

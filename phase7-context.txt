@@ -1,0 +1,2023 @@
+===== apps\web\app\(public)\game\[slug]\page.tsx =====
+import { ArrowLeft, ChevronRight } from "lucide-react";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { actionButton } from "@/components/game/action-styles";
+import { DeviceIcon } from "@/components/game/DeviceIcon";
+import { FavoriteAction } from "@/components/game/FavoriteButton";
+import { GameCard } from "@/components/game/GameCard";
+import { GamePlayer } from "@/components/game/GamePlayer";
+import { GameRating } from "@/components/game/GameRating";
+import { PlayCount } from "@/components/game/PlayCount";
+import { GameReport } from "@/components/game/GameReport";
+import { GameQr, ShareButton } from "@/components/game/GameShare";
+import { GameVotes } from "@/components/game/GameVotes";
+import { t } from "@/i18n";
+import { cn } from "@/lib/cn";
+import { getGameBySlug, getRelatedGames } from "@/lib/games";
+
+type Params = Promise<{ slug: string }>;
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { slug } = await params;
+  const game = await getGameBySlug(slug);
+
+  if (!game) return { title: t("game.notFound") };
+
+  return {
+    title: game.title,
+    description: game.description || undefined,
+  };
+}
+
+// The page itself asks for no data, it only adds Suspense. The data is read inside GameContent.
+export default function GamePage({ params }: { params: Params }) {
+  return (
+    <main>
+      <Suspense fallback={<GamePageSkeleton />}>
+        <GameContent params={params} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function GameContent({ params }: { params: Params }) {
+  const { slug } = await params;
+  const game = await getGameBySlug(slug);
+
+  if (!game) notFound();
+
+  const related = await getRelatedGames(game);
+
+  return (
+    <div className="flex flex-col gap-5 sm:gap-8 md:gap-10">
+      <div className="flex items-start gap-3 md:-mb-5">
+        <Link
+          href="/games"
+          aria-label={t("game.backToGames")}
+          title={t("game.backToGames")}
+          className={actionButton + " shrink-0"}
+        >
+          <ArrowLeft size={18} strokeWidth={1.5} aria-hidden="true" />
+        </Link>
+        <div className="min-w-0 max-sm:pt-1.5">
+          <h1 className="text-2xl font-[600] max-sm:text-[22px] max-sm:leading-tight md:text-3xl">{game.title}</h1>
+          {/* From 640px up the category stays under the title; on phones it is a pill in the About section. */}
+          <p className="mt-1 text-sm capitalize max-sm:hidden">
+            <Link href={"/category/" + game.categorySlug} className="text-muted hover:underline">
+              {game.categorySlug}
+            </Link>
+          </p>
+          {/* Phone info row: rating and views. */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
+            <Suspense fallback={null}>
+              <GameRating gameId={game.id} className="font-medium" />
+            </Suspense>
+            <Suspense fallback={null}>
+              <PlayCount gameId={game.id} icon="eye" />
+            </Suspense>
+          </div>
+        </div>
+      </div>
+
+      <GamePlayer
+        gameId={game.id}
+        slug={game.slug}
+        title={game.title}
+        thumbnailUrl={game.thumbnailUrl}
+        embedUrl={game.embedUrl}
+        stats={
+          <>
+            <Suspense fallback={null}>
+              <GameVotes gameId={game.id} />
+            </Suspense>
+          </>
+        }
+        actions={
+          <>
+            <FavoriteAction slug={game.slug} />
+          </>
+        }
+        meta={
+          <>
+            <ShareButton title={game.title} />
+            <GameReport gameId={game.id} />
+            <GameQr />
+          </>
+        }
+      />
+
+      <section aria-labelledby="about-heading" className="flex flex-col gap-3 sm:gap-4">
+        <h2 id="about-heading" className="text-lg font-[600]">
+          {t("game.about")}
+        </h2>
+        {game.description && (
+          <p className="text-muted max-sm:text-[15px] max-sm:leading-relaxed">{game.description}</p>
+        )}
+
+        <ul className={cn("flex flex-wrap gap-2", game.tags.length === 0 && "sm:hidden")}>
+          <li className="sm:hidden">
+            <Link
+              href={"/category/" + game.categorySlug}
+              className="inline-block rounded-full border border-brand/40 px-3 py-1 text-xs capitalize text-brand"
+            >
+              {game.categorySlug}
+            </Link>
+          </li>
+          {game.tags.map((tag) => (
+            <li key={tag}>
+              <Link
+                href={"/tag/" + encodeURIComponent(tag)}
+                className="inline-block rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:border-muted hover:text-foreground"
+              >
+                {tag}
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        <div className="flex items-center gap-3 text-muted">
+          <span className="text-sm">{t("game.devices")}</span>
+          <ul aria-label={t("game.devices")} className="flex gap-2">
+            {game.devices.map((device) => (
+              <li key={device}>
+                <DeviceIcon device={device} />
+                <span className="sr-only">{t(`devices.${device}`)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {related.length > 0 && (
+        <section aria-labelledby="related-heading">
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="related-heading" className="text-lg font-[600]">
+              {t("game.related")}
+            </h2>
+            {/* Phone only: desktop keeps its current layout. */}
+            <Link
+              href={"/category/" + game.categorySlug}
+              className="-mr-2 inline-flex items-center gap-0.5 rounded-full px-2 py-1 text-sm text-brand transition-colors hover:underline sm:hidden"
+            >
+              {t("game.seeAll")}
+              <ChevronRight size={16} strokeWidth={1.5} aria-hidden="true" />
+            </Link>
+          </div>
+          <ul className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:gap-4 md:grid-cols-3 md:gap-5 xl:grid-cols-4 xl:gap-6">
+            {related.map((item) => (
+              <li key={item.id}>
+                <GameCard game={item} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function GamePageSkeleton() {
+  return (
+    <div aria-hidden="true" className="flex animate-pulse flex-col gap-5 sm:gap-8 md:gap-10">
+      <div className="flex items-start gap-3">
+        <div className="size-10 shrink-0 rounded-full bg-border sm:size-11" />
+        <div className="flex flex-col gap-2">
+          <div className="h-8 w-48 rounded bg-border" />
+          <div className="h-4 w-24 rounded bg-border" />
+        </div>
+      </div>
+      <div className="aspect-video w-full rounded-2xl bg-border" />
+    </div>
+  );
+}
+
+===== apps\web\components\game\GamePlayer.tsx =====
+"use client";
+
+import { Maximize, Minimize, Play } from "lucide-react";
+import Image from "next/image";
+import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { actionButton } from "@/components/game/action-styles";
+import { ThumbBlock } from "@/components/game/ThumbBlock";
+import { t } from "@/i18n";
+import { recordPlay } from "@/lib/play-actions";
+import { addRecent } from "@/lib/recent";
+import { cn } from "@/lib/cn";
+
+type GamePlayerProps = {
+  title: string;
+  thumbnailUrl: string;
+  embedUrl: string;
+  // First row under the player: play count, like and dislike.
+  stats?: ReactNode;
+  // Second row, left side: favorite and share.
+  actions?: ReactNode;
+  // Second row, right side, before the fullscreen button: report and phone QR.
+  meta?: ReactNode;
+  gameId: string;
+  slug: string;
+};
+
+// sandbox = the least permission the game needs inside the iframe.
+// allow-same-origin is only given to games on another domain: for our own games,
+// allow-scripts together with allow-same-origin would defeat the sandbox.
+function sandboxFor(embedUrl: string) {
+  const base = "allow-scripts allow-pointer-lock";
+  return embedUrl.startsWith("/") ? base : `${base} allow-same-origin`;
+}
+
+// The browser owns the fullscreen state, so we subscribe to it instead of copying it into
+// our own state. This keeps the button correct even when the user presses Esc.
+function subscribeFullscreen(onChange: () => void) {
+  document.addEventListener("fullscreenchange", onChange);
+  return () => document.removeEventListener("fullscreenchange", onChange);
+}
+
+function subscribeNothing() {
+  return () => {};
+}
+
+export function GamePlayer({
+  gameId,
+  slug,
+  title,
+  thumbnailUrl,
+  embedUrl,
+  stats,
+  actions,
+  meta,
+}: GamePlayerProps) {
+  const [playing, setPlaying] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  const isFullscreen = useSyncExternalStore(
+    subscribeFullscreen,
+    () => document.fullscreenElement !== null,
+    () => false,
+  );
+  // false on the server, so the button appears after hydration. iPhone Safari stays false.
+  const canFullscreen = useSyncExternalStore(
+    subscribeNothing,
+    () => document.fullscreenEnabled,
+    () => false,
+  );
+
+  function handlePlay() {
+    setPlaying(true);
+    addRecent(slug);
+
+    // Count each game once per browser session (a page refresh does not count again).
+    const key = "played:" + gameId;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      // Storage can be blocked (private mode). The play is still counted.
+    }
+    void recordPlay(gameId);
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await boxRef.current?.requestFullscreen();
+      }
+    } catch (error) {
+      console.error("Fullscreen failed:", error);
+    }
+  }
+
+  const fullscreenLabel = isFullscreen ? t("game.exitFullscreen") : t("game.fullscreen");
+
+  return (
+    <div>
+      <div
+        ref={boxRef}
+        className={cn(
+          "relative aspect-video w-full overflow-hidden border border-border bg-surface",
+          isFullscreen ? "rounded-none border-0" : "rounded-2xl",
+        )}
+      >
+        {playing ? (
+          <iframe
+            src={embedUrl}
+            title={t("game.playerTitle", { title })}
+            sandbox={sandboxFor(embedUrl)}
+            allow="fullscreen"
+            allowFullScreen
+            className="absolute inset-0 size-full border-0"
+          />
+        ) : (
+          <>
+            <Image
+              src={thumbnailUrl}
+              alt=""
+              fill
+              priority
+              sizes="(min-width: 1152px) 1152px, 100vw"
+              className="card-thumb object-cover"
+            />
+            <ThumbBlock title={title} className="absolute inset-0 text-7xl" />
+            <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+              <button
+                type="button"
+                onClick={handlePlay}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-8 py-4 text-lg font-medium text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-white/10 transition-[transform,background-color,box-shadow] duration-150 hover:bg-primary-hover hover:shadow-primary/40 active:scale-[0.97] max-sm:px-5 max-sm:py-2.5 max-sm:text-[15px] motion-reduce:transition-none motion-reduce:active:scale-100"
+              >
+                <Play size={20} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />
+                {t("game.playNow")}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Desktop: the enter-fullscreen button sits on the player, bottom right. Phones keep it in the toolbar. */}
+        {canFullscreen && !isFullscreen && (
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label={fullscreenLabel}
+            title={fullscreenLabel}
+            className="absolute bottom-3 right-3 z-10 flex size-10 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80 max-sm:hidden"
+          >
+            <Maximize size={18} strokeWidth={1.5} aria-hidden="true" />
+          </button>
+        )}
+
+        {/* Inside the player box, so it is also there in fullscreen, before and during play. */}
+        {isFullscreen && (
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label={t("game.exitFullscreen")}
+            title={t("game.exitFullscreen")}
+            className="absolute right-3 top-3 z-10 flex size-11 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+          >
+            <Minimize size={20} strokeWidth={1.5} aria-hidden="true" />
+          </button>
+        )}
+      </div>
+
+      <div className="relative mt-3 flex flex-wrap items-center justify-between gap-2 sm:mt-4 sm:justify-start">
+        <div className="flex flex-wrap items-center gap-2">{stats}</div>
+        <div className="flex items-center gap-2 max-sm:ml-auto max-sm:gap-1.5 sm:flex-1 sm:justify-start">
+          {actions}
+          <div className="contents sm:ml-auto sm:flex sm:items-center sm:gap-2">
+            {meta}
+            {canFullscreen && (
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                aria-label={fullscreenLabel}
+                title={fullscreenLabel}
+                className={actionButton + " sm:hidden"}
+              >
+                {isFullscreen ? (
+                  <Minimize size={18} strokeWidth={1.5} aria-hidden="true" />
+                ) : (
+                  <Maximize size={18} strokeWidth={1.5} aria-hidden="true" />
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+===== apps\web\components\game\GameShare.tsx =====
+"use client";
+
+import { Share2, Smartphone, X } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { actionButton } from "@/components/game/action-styles";
+import { t } from "@/i18n";
+
+type Status = "idle" | "copied" | "failed";
+
+// "Desktop" = a mouse-like device with a wide screen. Phones and tablets do not get the QR code.
+const DESKTOP_QUERY = "(hover: hover) and (pointer: fine) and (min-width: 1024px)";
+
+function subscribeDesktop(onChange: () => void) {
+  const query = window.matchMedia(DESKTOP_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+function getDesktop() {
+  return window.matchMedia(DESKTOP_QUERY).matches;
+}
+
+// No query string or hash, so shared links stay clean.
+function pageUrl() {
+  return window.location.origin + window.location.pathname;
+}
+
+// Round share button for the toolbar. The "Link copied" note appears next to it.
+export function ShareButton({ title }: { title: string }) {
+  const [status, setStatus] = useState<Status>("idle");
+  const timer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  function showStatus(next: Status) {
+    setStatus(next);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setStatus("idle"), 3000);
+  }
+
+  async function handleShare() {
+    const url = pageUrl();
+
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title, text: t("game.shareText", { title }), url });
+        return;
+      } catch (error) {
+        // The visitor closed the share sheet: nothing to do. Any other error falls back to copying.
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      showStatus("copied");
+    } catch {
+      showStatus("failed");
+    }
+  }
+
+  const statusText =
+    status === "copied" ? t("game.linkCopied") : status === "failed" ? t("game.copyFailed") : "";
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleShare}
+        aria-label={t("game.share")}
+        title={t("game.share")}
+        className={actionButton}
+      >
+        <Share2 size={18} strokeWidth={1.5} aria-hidden="true" />
+      </button>
+      <span
+        aria-live="polite"
+        className="absolute right-0 top-full z-20 mt-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-muted empty:hidden"
+      >
+        {statusText}
+      </span>
+    </>
+  );
+}
+
+// Phone icon in the toolbar (desktop only). It opens a small popup with the QR code.
+// The QR library loads only when the popup is opened.
+export function GameQr() {
+  const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktop, () => false);
+  const [qr, setQr] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  async function openPopup() {
+    dialogRef.current?.showModal();
+    if (qr) return;
+
+    try {
+      const QRCode = await import("qrcode");
+      setQr(
+        await QRCode.toDataURL(pageUrl(), {
+          width: 288,
+          margin: 2,
+          errorCorrectionLevel: "M",
+        }),
+      );
+    } catch (error) {
+      console.error("QR code failed:", error);
+    }
+  }
+
+  if (!isDesktop) return null;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={openPopup}
+        aria-label={t("game.playOnPhone")}
+        title={t("game.playOnPhone")}
+        className={actionButton}
+      >
+        <Smartphone size={18} strokeWidth={1.5} aria-hidden="true" />
+      </button>
+
+      <dialog
+        ref={dialogRef}
+        aria-label={t("game.playOnPhone")}
+        // A click on the dark area around the popup lands on the dialog itself, and closes it.
+        onClick={(event) => {
+          if (event.target === event.currentTarget) event.currentTarget.close();
+        }}
+        className="m-auto w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-surface p-0 text-foreground backdrop:bg-black/60"
+      >
+        <button
+          type="button"
+          onClick={() => dialogRef.current?.close()}
+          aria-label={t("common.close")}
+          title={t("common.close")}
+          className="absolute right-2 top-2 flex size-9 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:text-foreground"
+        >
+          <X size={18} strokeWidth={1.5} aria-hidden="true" />
+        </button>
+
+        <div className="flex flex-col items-center gap-4 p-6 pt-10 text-center">
+          <div className="size-36 overflow-hidden rounded-xl bg-white">
+            {qr ? (
+              // A data URL cannot go through next/image, so a plain img is correct here.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={qr} width={144} height={144} alt={t("game.qrAlt")} />
+            ) : null}
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="font-medium">{t("game.playOnPhone")}</p>
+            <p className="text-sm text-muted">{t("game.scanQr")}</p>
+          </div>
+        </div>
+      </dialog>
+    </>
+  );
+}
+
+===== apps\web\components\game\GameReport.tsx =====
+"use client";
+
+import { Flag, Send } from "lucide-react";
+import { useState, useTransition } from "react";
+import { actionButton } from "@/components/game/action-styles";
+import { t } from "@/i18n";
+import { reportGame } from "@/lib/report-actions";
+
+// A flag button. It opens a small panel under the toolbar (the toolbar is the positioned parent).
+export function GameReport({ gameId }: { gameId: string }) {
+  const [reason, setReason] = useState("not_loading");
+  const [status, setStatus] = useState<"idle" | "sent" | "failed">("idle");
+  const [pending, startTransition] = useTransition();
+
+  function send() {
+    startTransition(async () => {
+      try {
+        setStatus((await reportGame(gameId, reason)) ? "sent" : "failed");
+      } catch {
+        setStatus("failed");
+      }
+    });
+  }
+
+  if (status === "sent") {
+    return <p className="text-sm text-muted">{t("game.reportSent")}</p>;
+  }
+
+  return (
+    <details className="text-sm">
+      <summary
+        aria-label={t("game.report")}
+        title={t("game.report")}
+        className={actionButton + " list-none [&::-webkit-details-marker]:hidden"}
+      >
+        <Flag size={18} strokeWidth={1.5} aria-hidden="true" />
+      </summary>
+      <div className="absolute right-0 top-full z-20 mt-2 flex w-72 max-w-full flex-col gap-3 rounded-xl border border-border bg-surface p-3">
+        <select
+          aria-label={t("game.reportReason")}
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          className="h-11 rounded-lg border border-border bg-background px-3"
+        >
+          <option value="not_loading">{t("game.reasonNotLoading")}</option>
+          <option value="broken_controls">{t("game.reasonControls")}</option>
+          <option value="inappropriate">{t("game.reasonInappropriate")}</option>
+          <option value="other">{t("game.reasonOther")}</option>
+        </select>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={send}
+            disabled={pending}
+            aria-label={t("game.reportSend")}
+            title={t("game.reportSend")}
+            className={actionButton}
+          >
+            <Send size={18} strokeWidth={1.5} aria-hidden="true" />
+          </button>
+          <p className="text-muted" aria-live="polite">
+            {status === "failed" ? t("game.reportFailed") : ""}
+          </p>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+===== apps\web\components\game\GameRating.tsx =====
+import { Star } from "lucide-react";
+import { t } from "@/i18n";
+import { cn } from "@/lib/cn";
+import { getVoteCounts } from "@/lib/vote-count";
+
+// Star rating out of 5, worked out from likes and dislikes. Hidden until the first vote.
+// A small "starting weight" (PRIOR_VOTES votes at PRIOR_SCORE) stops one single vote from
+// showing 5.0 or 1.0. With many votes the real like share takes over.
+// Examples: 1 like = 4.7, 10 likes = 4.9, 8 likes + 2 dislikes = 4.1, 1 dislike = 3.0.
+const PRIOR_VOTES = 2;
+const PRIOR_SCORE = 0.9;
+
+// It is read when the page loads, so after a vote it updates on the next load.
+export async function GameRating({ gameId, className }: { gameId: string; className?: string }) {
+  const counts = await getVoteCounts(gameId);
+  if (!counts) return null;
+
+  const total = counts.likes + counts.dislikes;
+  if (total === 0) return null;
+
+  const share = (counts.likes + PRIOR_VOTES * PRIOR_SCORE) / (total + PRIOR_VOTES);
+  const rating = Math.min(5, Math.round(share * 50) / 10).toFixed(1);
+
+  // The tooltip and screen readers still get the exact like percentage and vote count.
+  const percent = Math.round((counts.likes / total) * 100);
+  const summary = t("game.voteSummary", {
+    percent: String(percent),
+    count: total.toLocaleString("en-US"),
+  });
+
+  return (
+    <p
+      className={cn("flex items-center gap-1.5 text-sm tabular-nums text-muted", className)}
+      title={summary}
+    >
+      <Star
+        size={16}
+        strokeWidth={1.5}
+        fill="currentColor"
+        className="text-amber-400"
+        aria-hidden="true"
+      />
+      <span aria-hidden="true">{rating}</span>
+      <span className="sr-only">{summary}</span>
+    </p>
+  );
+}
+===== apps\web\components\game\FavoriteButton.tsx =====
+"use client";
+
+import { Bookmark } from "lucide-react";
+import { actionButton } from "@/components/game/action-styles";
+import { Icon } from "@/components/layout/icons";
+import { t } from "@/i18n";
+import { cn } from "@/lib/cn";
+import { toggleFavorite, useFavorites } from "@/lib/favorites";
+
+// Heart on top of a game card. z-10 keeps it above the card's full-size link.
+export function FavoriteButton({ slug, title }: { slug: string; title: string }) {
+  const saved = useFavorites().includes(slug);
+
+  return (
+    <button
+      type="button"
+      aria-pressed={saved}
+      aria-label={t("card.favorite") + ": " + title}
+      onClick={() => toggleFavorite(slug)}
+      className={cn(
+        "absolute right-2 top-2 z-10 flex size-10 max-sm:size-9 cursor-pointer items-center justify-center rounded-full transition-colors",
+        saved ? "bg-primary text-primary-foreground" : "bg-black/50 text-white hover:bg-black/70",
+      )}
+    >
+      <Icon name="heart" size={18} filled={saved} />
+    </button>
+  );
+}
+
+// Round heart button on the game page (and in the home hero).
+export function FavoriteAction({ slug }: { slug: string }) {
+  const saved = useFavorites().includes(slug);
+
+  return (
+    <button
+      type="button"
+      aria-pressed={saved}
+      aria-label={t("favorites.action")}
+      title={t("favorites.action")}
+      onClick={() => toggleFavorite(slug)}
+      className={actionButton}
+    >
+      <Bookmark size={18} strokeWidth={1.5} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
+    </button>
+  );
+}
+
+===== apps\web\components\game\VoteButtons.tsx =====
+"use client";
+
+import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { useState, useSyncExternalStore, useTransition } from "react";
+import { actionButton } from "@/components/game/action-styles";
+import { t } from "@/i18n";
+import type { VoteCounts } from "@/lib/vote-count";
+import { castVote } from "@/lib/vote-actions";
+
+type Vote = -1 | 0 | 1;
+
+// The visitor's own vote lives in localStorage. The memory copy is the fallback when storage is blocked.
+const memory = new Map<string, Vote>();
+const listeners = new Set<() => void>();
+
+function storageKey(gameId: string) {
+  return "vote:" + gameId;
+}
+
+function readVote(gameId: string): Vote {
+  try {
+    const value = localStorage.getItem(storageKey(gameId));
+    return value === "1" ? 1 : value === "-1" ? -1 : 0;
+  } catch {
+    return memory.get(gameId) ?? 0;
+  }
+}
+
+function saveVote(gameId: string, vote: Vote) {
+  memory.set(gameId, vote);
+  try {
+    if (vote === 0) localStorage.removeItem(storageKey(gameId));
+    else localStorage.setItem(storageKey(gameId), String(vote));
+  } catch {
+    // Storage can be blocked (private mode). The memory copy keeps the vote for this visit.
+  }
+  listeners.forEach((listener) => listener());
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  window.addEventListener("storage", listener);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener("storage", listener);
+  };
+}
+
+function applyVote(counts: VoteCounts, from: Vote, to: Vote): VoteCounts {
+  return {
+    likes: Math.max(0, counts.likes + (to === 1 ? 1 : 0) - (from === 1 ? 1 : 0)),
+    dislikes: Math.max(0, counts.dislikes + (to === -1 ? 1 : 0) - (from === -1 ? 1 : 0)),
+  };
+}
+
+export function VoteButtons({
+  gameId,
+  initialCounts,
+}: {
+  gameId: string;
+  initialCounts: VoteCounts;
+}) {
+  // The server render has no vote (0); the browser reads the saved one after hydration.
+  const vote = useSyncExternalStore(
+    subscribe,
+    () => readVote(gameId),
+    () => 0 as Vote,
+  );
+  const [counts, setCounts] = useState(initialCounts);
+  const [pending, startTransition] = useTransition();
+
+  function choose(target: 1 | -1) {
+    if (pending) return;
+
+    const from = vote;
+    const to: Vote = from === target ? 0 : target;
+    const before = counts;
+
+    // Show the change at once, then replace it with the real numbers (or undo it if saving failed).
+    setCounts(applyVote(before, from, to));
+    saveVote(gameId, to);
+
+    startTransition(async () => {
+      const result = await castVote(gameId, from, to);
+      if (result) {
+        setCounts(result);
+      } else {
+        setCounts(before);
+        saveVote(gameId, from);
+      }
+    });
+  }
+
+  const total = counts.likes + counts.dislikes;
+  const percent = total === 0 ? 0 : Math.round((counts.likes / total) * 100);
+  const likes = counts.likes.toLocaleString("en-US");
+  const dislikes = counts.dislikes.toLocaleString("en-US");
+  const summary =
+    total === 0
+      ? t("game.noVotes")
+      : t("game.voteSummary", {
+          percent: String(percent),
+          count: total.toLocaleString("en-US"),
+        });
+
+  return (
+    <div className="flex items-center gap-2 max-sm:gap-0 max-sm:[&>button:nth-child(1)]:rounded-r-none max-sm:[&>button:nth-child(2)]:-ml-px max-sm:[&>button:nth-child(2)]:rounded-l-none">
+      <button
+        type="button"
+        aria-pressed={vote === 1}
+        aria-label={t("game.like") + " (" + likes + ")"}
+        title={t("game.like")}
+        disabled={pending}
+        onClick={() => choose(1)}
+        className={actionButton}
+      >
+        <ThumbsUp
+          size={18}
+          strokeWidth={1.5}
+          fill={vote === 1 ? "currentColor" : "none"}
+          aria-hidden="true"
+        />
+        <span className="tabular-nums">{likes}</span>
+      </button>
+      <button
+        type="button"
+        aria-pressed={vote === -1}
+        aria-label={t("game.dislike") + " (" + dislikes + ")"}
+        title={t("game.dislike")}
+        disabled={pending}
+        onClick={() => choose(-1)}
+        className={actionButton}
+      >
+        <ThumbsDown
+          size={18}
+          strokeWidth={1.5}
+          fill={vote === -1 ? "currentColor" : "none"}
+          aria-hidden="true"
+        />
+        <span className="tabular-nums">{dislikes}</span>
+      </button>
+      {/* Screen readers only: the vote summary is read out, but no percentage is shown on screen. */}
+      <p className="sr-only" aria-live="polite" title={summary}>
+        {summary}
+      </p>
+    </div>
+  );
+}
+
+===== apps\web\components\game\GameCard.tsx =====
+import { ThumbsUp } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import type { Game } from "@berryblue/shared";
+import { FavoriteButton } from "@/components/game/FavoriteButton";
+import { ThumbBlock } from "@/components/game/ThumbBlock";
+import { PlayIcon, ThumbIcon } from "@/components/layout/icons";
+import { t } from "@/i18n";
+
+export type GameCardData = Pick<
+  Game,
+  "slug" | "title" | "categorySlug" | "devices" | "tags" | "thumbnailUrl"
+> & {
+  description?: string | undefined;
+  playCount?: number | undefined;
+  likeCount?: number | undefined;
+};
+
+type GameCardProps = {
+  game: GameCardData;
+  priority?: boolean;
+};
+
+const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
+
+// The whole card is one link (the ::after on the title). Title and category sit on the art.
+// A mouse on desktop also sees the plays and the likes (.card-preview in globals.css).
+// The description, tags and devices are on the game page.
+export function GameCard({ game, priority = false }: GameCardProps) {
+  const hasStats = game.playCount !== undefined && game.likeCount !== undefined;
+
+  return (
+    <article className="game-card relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-2xl bg-surface">
+      <Image
+        src={game.thumbnailUrl}
+        alt=""
+        fill
+        sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 28vw, 78vw"
+        priority={priority}
+        className="card-thumb object-cover"
+      />
+      <ThumbBlock title={game.title} className="absolute inset-0 text-5xl" />
+      <FavoriteButton slug={game.slug} title={game.title} />
+
+      <div className="z-[1] flex flex-col gap-1.5 bg-linear-to-t from-black/90 via-black/55 to-transparent p-3 pr-14 pt-14 md:p-4 md:pr-16 md:pt-16">
+        <h3 className="truncate text-sm font-medium text-white max-sm:line-clamp-2 max-sm:whitespace-normal max-sm:leading-snug md:text-base">
+          <Link
+            href={"/game/" + game.slug}
+            aria-label={t("card.playAria", { title: game.title })}
+            className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-brand"
+          >
+            {game.title}
+          </Link>
+        </h3>
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium capitalize leading-none text-white">
+            {game.categorySlug}
+          </span>
+          {hasStats ? (
+            <span className="flex items-center gap-1 text-xs font-medium tabular-nums text-white sm:hidden">
+              <ThumbsUp size={12} strokeWidth={1.5} aria-hidden="true" />
+              {compact.format(game.likeCount ?? 0)}
+            </span>
+          ) : null}
+          {hasStats ? (
+            <div aria-hidden="true" className="card-preview pointer-events-none">
+              <p className="flex items-center gap-3 text-xs font-medium tabular-nums text-white">
+                <span className="flex items-center gap-1">
+                  <PlayIcon size={12} />
+                  {compact.format(game.playCount ?? 0)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <ThumbIcon size={12} />
+                  {compact.format(game.likeCount ?? 0)}
+                </span>
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-3 right-3 z-[1] flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground md:bottom-4 md:right-4 md:size-10"
+      >
+        <PlayIcon size={14} />
+      </span>
+    </article>
+  );
+}
+
+export function GameCardSkeleton() {
+  return <div aria-hidden="true" className="aspect-[4/5] animate-pulse rounded-2xl bg-border" />;
+}
+
+===== apps\web\components\game\action-styles.ts =====
+// Round icon buttons under the player: like, dislike, favorite, share, report, fullscreen, back.
+// On phones they are 40px so one row fits; from 640px up they are 44px, as before.
+export const actionButton =
+  "inline-flex h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-full border border-border px-3 text-sm text-foreground transition-colors hover:bg-surface disabled:pointer-events-none disabled:opacity-60 aria-pressed:relative aria-pressed:z-10 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary-hover max-sm:h-10 max-sm:min-w-10 max-sm:px-2.5";
+
+===== apps\web\components\game\DeviceIcon.tsx =====
+import { Monitor, Smartphone, Tablet, type LucideIcon } from "lucide-react";
+import type { Device } from "@berryblue/shared";
+
+const icons: Record<Device, LucideIcon> = {
+  mobile: Smartphone,
+  tablet: Tablet,
+  desktop: Monitor,
+};
+
+export function DeviceIcon({ device }: { device: Device }) {
+  const Component = icons[device];
+  return <Component size={16} strokeWidth={1.5} aria-hidden="true" />;
+}
+
+===== apps\web\lib\games.ts =====
+import { cacheLife } from "next/cache";
+import {
+  categorySchema,
+  gameSchema,
+  type Category,
+  type Game as BaseGame,
+} from "@berryblue/shared";
+import { PAGE_SIZE, type GamesFilters, type SortName } from "@/lib/games-query";
+import { createPublicClient } from "@/lib/supabase/public";
+
+export type ShelfName = SortName;
+
+// A game plus the counters the cards show on hover.
+export type Game = BaseGame & { playCount: number; likeCount: number; dislikeCount: number };
+
+const SORT_COLUMN = {
+  trending: "trending_score",
+  new: "created_at",
+  popular: "play_count",
+} as const;
+
+const GAME_COLUMNS =
+  "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, play_count, like_count, dislike_count, categories(slug)";
+
+// "!inner" means: only games whose category matches the filter.
+const GAME_COLUMNS_INNER =
+  "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, play_count, like_count, dislike_count, categories!inner(slug)";
+
+const SLUG_PATTERN = /^[a-z0-9-]+$/;
+
+// Abhi pagination nahi: ek category ya tag par itne games dikhte hain.
+export const LISTING_LIMIT = 48;
+
+// Database ki row (snake_case) ko Game (camelCase) mein badalta hai aur Zod se check karta hai.
+function parseRow(row: unknown) {
+  const base = parseBase(row);
+  if (!base.success) return base;
+
+  const r = row as Record<string, unknown>;
+  return {
+    success: true as const,
+    data: {
+      ...base.data,
+      playCount: Number(r.play_count) || 0,
+      likeCount: Number(r.like_count) || 0,
+      dislikeCount: Number(r.dislike_count) || 0,
+    },
+  };
+}
+
+function parseBase(row: unknown) {
+  const r = row as Record<string, unknown>;
+  const category = r.categories as { slug?: string } | null;
+
+  return gameSchema.safeParse({
+    id: r.id,
+    slug: r.slug,
+    title: r.title,
+    description: r.description,
+    thumbnailUrl: r.thumbnail_url,
+    embedUrl: r.embed_url,
+    categorySlug: category?.slug,
+    tags: r.tags,
+    devices: r.devices,
+    provider: r.provider,
+    createdAt: r.created_at,
+  });
+}
+
+function parseRows(rows: unknown[] | null): Game[] {
+  const games: Game[] = [];
+
+  for (const row of rows ?? []) {
+    const result = parseRow(row);
+    if (result.success) {
+      games.push(result.data);
+    } else {
+      console.error("Skipping invalid game row:", result.error.issues);
+    }
+  }
+
+  return games;
+}
+
+// Rule: "use cache" wale functions error par THROW karte hain (cache mein sirf kamyab jawab
+// jaate hain). Bahar ka wrapper error pakad kar pehle jaisa khali jawab lautata hai.
+
+// ---------- Shelves (homepage) ----------
+
+async function loadShelf(shelf: ShelfName, limit: number): Promise<Game[]> {
+  "use cache";
+  cacheLife("minutes");
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("games")
+    .select(GAME_COLUMNS)
+    .eq("is_published", true)
+    .order(SORT_COLUMN[shelf], { ascending: false })
+    .order("id")
+    .limit(limit);
+
+  if (error) throw new Error(`getShelf(${shelf}) failed: ${error.message}`);
+
+  return parseRows(data);
+}
+
+export async function getShelf(shelf: ShelfName, limit = 8): Promise<Game[]> {
+  try {
+    return await loadShelf(shelf, limit);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+// ---------- All games (sort + filters + pagination) ----------
+
+export type GamesPage = {
+  games: Game[];
+  total: number;
+  page: number;
+  pageCount: number;
+};
+
+// Filters come in as plain strings (null = no filter) so the cache key stays simple.
+async function loadGamesPage(
+  sort: SortName,
+  page: number,
+  pageSize: number,
+  category: string | null,
+  device: string | null,
+  tag: string | null,
+): Promise<GamesPage> {
+  "use cache";
+  cacheLife("minutes");
+
+  const supabase = createPublicClient();
+
+  // "!inner" is always used, so the count and the list agree on which games exist.
+  // The category filter itself is added only when one is chosen.
+  let countQuery = supabase
+    .from("games")
+    .select("id, categories!inner(slug)", { count: "exact", head: true })
+    .eq("is_published", true);
+
+  let listQuery = supabase.from("games").select(GAME_COLUMNS_INNER).eq("is_published", true);
+
+  if (category) {
+    countQuery = countQuery.eq("categories.slug", category);
+    listQuery = listQuery.eq("categories.slug", category);
+  }
+  if (device) {
+    countQuery = countQuery.contains("devices", [device]);
+    listQuery = listQuery.contains("devices", [device]);
+  }
+  if (tag) {
+    countQuery = countQuery.contains("tags", [tag]);
+    listQuery = listQuery.contains("tags", [tag]);
+  }
+
+  const { count, error: countError } = await countQuery;
+
+  if (countError || count === null) {
+    throw new Error(`getGamesPage count failed: ${countError?.message ?? "no count"}`);
+  }
+
+  const pageCount = Math.max(1, Math.ceil(count / pageSize));
+  if (page > pageCount) return { games: [], total: count, page, pageCount };
+
+  const from = (page - 1) * pageSize;
+
+  const { data, error } = await listQuery
+    .order(SORT_COLUMN[sort], { ascending: false })
+    .order("id")
+    .range(from, from + pageSize - 1);
+
+  if (error) throw new Error(`getGamesPage failed: ${error.message}`);
+
+  return { games: parseRows(data), total: count, page, pageCount };
+}
+
+// null = the database could not be reached.
+export async function getGamesPage(
+  sort: SortName,
+  page: number,
+  filters: GamesFilters = {},
+  pageSize = PAGE_SIZE,
+): Promise<GamesPage | null> {
+  try {
+    return await loadGamesPage(
+      sort,
+      page,
+      pageSize,
+      filters.category ?? null,
+      filters.device ?? null,
+      filters.tag ?? null,
+    );
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+// ---------- One game ----------
+
+// null = nahi mila. Database error par throw (error page), taake masla cache na ho.
+export async function getGameBySlug(slug: string): Promise<Game | null> {
+  "use cache";
+  cacheLife("minutes");
+
+  // URL se aane wali value par bharosa nahi: ghalat slug par database tak jaana hi nahi.
+  if (!SLUG_PATTERN.test(slug)) return null;
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("games")
+    .select(GAME_COLUMNS)
+    .eq("is_published", true)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) throw new Error(`getGameBySlug(${slug}) failed: ${error.message}`);
+  if (!data) return null;
+
+  const result = parseRow(data);
+  if (!result.success) {
+    console.error(`Invalid game row for ${slug}:`, result.error.issues);
+    return null;
+  }
+
+  return result.data;
+}
+
+// ---------- Related games ----------
+
+// Candidates: same category, plus games that share a tag.
+// Score: 2 for the same category, 1 for each shared tag. Ties go to the most played.
+async function loadRelatedGames(
+  categorySlug: string,
+  excludeSlug: string,
+  tags: string[],
+  limit: number,
+): Promise<Game[]> {
+  "use cache";
+  cacheLife("minutes");
+
+  const supabase = createPublicClient();
+
+  const sameCategory = await supabase
+    .from("games")
+    .select(GAME_COLUMNS_INNER)
+    .eq("is_published", true)
+    .eq("categories.slug", categorySlug)
+    .neq("slug", excludeSlug)
+    .order("play_count", { ascending: false })
+    .order("id")
+    .limit(48);
+
+  if (sameCategory.error) {
+    throw new Error(`getRelatedGames category failed: ${sameCategory.error.message}`);
+  }
+
+  const candidates = parseRows(sameCategory.data);
+
+  if (tags.length > 0) {
+    const sharedTags = await supabase
+      .from("games")
+      .select(GAME_COLUMNS)
+      .eq("is_published", true)
+      .overlaps("tags", tags)
+      .neq("slug", excludeSlug)
+      .order("play_count", { ascending: false })
+      .order("id")
+      .limit(48);
+
+    if (sharedTags.error) {
+      throw new Error(`getRelatedGames tags failed: ${sharedTags.error.message}`);
+    }
+
+    candidates.push(...parseRows(sharedTags.data));
+  }
+
+  const unique = [...new Map(candidates.map((game) => [game.id, game])).values()];
+
+  const score = (game: Game) =>
+    (game.categorySlug === categorySlug ? 2 : 0) +
+    game.tags.filter((tag) => tags.includes(tag)).length;
+
+  // sort() is stable, so equal scores keep the play_count order.
+  return unique.sort((a, b) => score(b) - score(a)).slice(0, limit);
+}
+
+export async function getRelatedGames(game: Game, limit = 4): Promise<Game[]> {
+  try {
+    return await loadRelatedGames(game.categorySlug, game.slug, game.tags, limit);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+// ---------- Categories ----------
+
+async function loadCategories(): Promise<Category[]> {
+  "use cache";
+  cacheLife("hours");
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase.from("categories").select("id, slug, name").order("name");
+
+  if (error) throw new Error(`getCategories failed: ${error.message}`);
+
+  const categories: Category[] = [];
+  for (const row of data ?? []) {
+    const result = categorySchema.safeParse(row);
+    if (result.success) {
+      categories.push(result.data);
+    } else {
+      console.error("Skipping invalid category row:", result.error.issues);
+    }
+  }
+
+  return categories;
+}
+
+export async function getCategories(): Promise<Category[]> {
+  try {
+    return await loadCategories();
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+export async function getCategoryBySlug(slug: string): Promise<Category | null> {
+  "use cache";
+  cacheLife("hours");
+
+  if (!SLUG_PATTERN.test(slug)) return null;
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id, slug, name")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) throw new Error(`getCategoryBySlug(${slug}) failed: ${error.message}`);
+  if (!data) return null;
+
+  const result = categorySchema.safeParse(data);
+  return result.success ? result.data : null;
+}
+
+// ---------- Category and tag listings ----------
+
+async function loadCategoryGames(categorySlug: string, limit: number): Promise<Game[]> {
+  "use cache";
+  cacheLife("minutes");
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("games")
+    .select(GAME_COLUMNS_INNER)
+    .eq("is_published", true)
+    .eq("categories.slug", categorySlug)
+    .order("play_count", { ascending: false })
+    .order("id")
+    .limit(limit);
+
+  if (error) throw new Error(`getCategoryGames(${categorySlug}) failed: ${error.message}`);
+
+  return parseRows(data);
+}
+
+export async function getCategoryGames(
+  categorySlug: string,
+  limit = LISTING_LIMIT,
+): Promise<Game[]> {
+  // Ghalat slug par cache entry bhi nahi banti.
+  if (!SLUG_PATTERN.test(categorySlug)) return [];
+
+  try {
+    return await loadCategoryGames(categorySlug, limit);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+async function loadTagGames(tag: string, limit: number): Promise<Game[]> {
+  "use cache";
+  cacheLife("minutes");
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("games")
+    .select(GAME_COLUMNS)
+    .eq("is_published", true)
+    .contains("tags", [tag])
+    .order("play_count", { ascending: false })
+    .order("id")
+    .limit(limit);
+
+  if (error) throw new Error(`getTagGames(${tag}) failed: ${error.message}`);
+
+  return parseRows(data);
+}
+
+export async function getTagGames(tag: string, limit = LISTING_LIMIT): Promise<Game[]> {
+  if (!SLUG_PATTERN.test(tag)) return [];
+
+  try {
+    return await loadTagGames(tag, limit);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+// ---------- Search ----------
+
+// % _ and \ mean something special inside ilike, so they are escaped.
+function escapeLike(value: string) {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+// Not cached on purpose: visitors can type anything, so the cache would never stop growing.
+// Call it inside Suspense. null = the database could not be reached.
+export async function searchGames(query: string, limit = LISTING_LIMIT): Promise<Game[] | null> {
+  const q = query.trim().toLowerCase();
+  if (q.length === 0) return [];
+
+  try {
+    const supabase = createPublicClient();
+
+    const byTitle = await supabase
+      .from("games")
+      .select(GAME_COLUMNS)
+      .eq("is_published", true)
+      .ilike("title", `%${escapeLike(q)}%`)
+      .order("play_count", { ascending: false })
+      .order("id")
+      .limit(limit);
+
+    if (byTitle.error) throw new Error(`searchGames title failed: ${byTitle.error.message}`);
+
+    const found = parseRows(byTitle.data);
+
+    // Tags are lowercase with dashes ("word-puzzle"), so "word puzzle" is tried as that tag.
+    const tag = q.replace(/\s+/g, "-");
+    if (SLUG_PATTERN.test(tag)) {
+      const byTag = await supabase
+        .from("games")
+        .select(GAME_COLUMNS)
+        .eq("is_published", true)
+        .contains("tags", [tag])
+        .order("play_count", { ascending: false })
+        .order("id")
+        .limit(limit);
+
+      if (byTag.error) throw new Error(`searchGames tag failed: ${byTag.error.message}`);
+      found.push(...parseRows(byTag.data));
+    }
+
+    const unique = [...new Map(found.map((game) => [game.id, game])).values()];
+
+    // 0 = title starts with the search, 1 = title contains it, 2 = tag match only.
+    // sort() is stable, so equal ranks keep the play_count order.
+    const rank = (game: Game) => {
+      const title = game.title.toLowerCase();
+      return title.startsWith(q) ? 0 : title.includes(q) ? 1 : 2;
+    };
+
+    return unique.sort((a, b) => rank(a) - rank(b)).slice(0, limit);
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+// ---------- Games by slug (favorites, recently played) ----------
+
+// Returns the games in the order of the slugs. Unknown or unpublished slugs are dropped.
+// Not cached: every visitor has a different list. null = the database could not be reached.
+export async function getGamesBySlugs(slugs: string[]): Promise<Game[] | null> {
+  const unique = [...new Set(slugs)].slice(0, 50);
+  if (unique.length === 0) return [];
+
+  try {
+    const { data, error } = await createPublicClient()
+      .from("games")
+      .select(GAME_COLUMNS)
+      .eq("is_published", true)
+      .in("slug", unique);
+
+    if (error) throw new Error(`getGamesBySlugs failed: ${error.message}`);
+
+    const bySlug = new Map(parseRows(data).map((game) => [game.slug, game]));
+    return unique.flatMap((slug) => {
+      const game = bySlug.get(slug);
+      return game ? [game] : [];
+    });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+===== apps\web\lib\vote-count.ts =====
+import { createPublicClient } from "@/lib/supabase/public";
+
+export type VoteCounts = { likes: number; dislikes: number };
+
+// Not cached on purpose: the numbers should be fresh. Call it inside Suspense.
+// null = game not found or the database could not be reached.
+export async function getVoteCounts(gameId: string): Promise<VoteCounts | null> {
+  try {
+    const { data, error } = await createPublicClient()
+      .from("games")
+      .select("like_count, dislike_count")
+      .eq("id", gameId)
+      .eq("is_published", true)
+      .maybeSingle();
+
+    if (error) {
+      console.error("getVoteCounts failed:", error.message);
+      return null;
+    }
+
+    return data ? { likes: Number(data.like_count), dislikes: Number(data.dislike_count) } : null;
+  } catch (error) {
+    console.error("getVoteCounts failed:", error);
+    return null;
+  }
+}
+
+===== apps\web\i18n\messages\en.json =====
+{
+  "theme": {
+    "label": "Light theme",
+    "title": "Switch between dark and light"
+  },
+  "lowInternet": {
+    "label": "Low Internet Mode",
+    "title": "Low Internet Mode: shows colours instead of pictures"
+  },
+  "continuePlaying": {
+    "title": "Continue playing",
+    "clear": "Clear"
+  },
+  "favorites": {
+    "title": "My favorites",
+    "link": "Favorites",
+    "action": "Favorite",
+    "empty": "You have no favorites yet. Tap the heart on a game to save it here.",
+    "browse": "Browse games",
+    "error": "Could not load your favorites. Please try again."
+  },
+  "common": {
+    "play": "Play",
+    "close": "Close",
+    "mascotAlt": "BerryBlue mascot"
+  },
+  "devices": {
+    "mobile": "Mobile",
+    "tablet": "Tablet",
+    "desktop": "Desktop"
+  },
+  "card": {
+    "playAria": "Play {title}",
+    "likes": "{count} likes",
+    "favorite": "Favorite",
+    "devices": "Playable on"
+  },
+  "nav": {
+    "main": "Main navigation",
+    "bottom": "Bottom navigation",
+    "home": "Home",
+    "games": "Games",
+    "search": "Search",
+    "favorites": "Favorites",
+    "categories": "Categories"
+  },
+  "search": {
+    "title": "Search games",
+    "label": "Search games",
+    "placeholder": "Search",
+    "tooShort": "Type at least 2 letters to search",
+    "suggestions": "Search suggestions",
+    "error": "Search is not working right now. Please try again.",
+    "empty": "No games found for \"{query}\".",
+    "results": "{count} games found for \"{query}\""
+  },
+  "footer": {
+    "links": "Footer links",
+    "about": "About",
+    "contact": "Contact",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "copyright": "{name}. All rights reserved."
+  },
+  "home": {
+    "title": "Play free games instantly",
+    "subtitle": "No downloads. Works on phone, tablet and computer.",
+    "viewAll": "View all",
+    "empty": "No games yet",
+    "shelves": {
+      "trending": "Trending now",
+      "new": "New games",
+      "popular": "Most played"
+    }
+  },
+  "games": {
+    "title": "All games",
+    "error": "Could not load games. Please try again.",
+    "empty": "No games found",
+    "noMatch": "No games match these filters",
+    "filters": {
+      "label": "Filters",
+      "category": "Category",
+      "device": "Device",
+      "tag": "Tags",
+      "all": "All",
+      "anyDevice": "Any device",
+      "clear": "Clear filters"
+    },
+    "showing": "Showing {from}-{to} of {total} games",
+    "sortBy": "Sort games",
+    "sort": {
+      "trending": "Trending",
+      "new": "Newest",
+      "popular": "Most played"
+    },
+    "pagination": {
+      "label": "Pagination",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {page}"
+    }
+  },
+  "game": {
+    "seeAll": "See all",
+    "likedLabel": "liked",
+    "playNow": "Play now",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "plays": "{count} plays",
+    "like": "Like",
+    "dislike": "Dislike",
+    "noVotes": "No votes yet",
+    "voteSummary": "{percent}% liked ({count} votes)",
+    "share": "Share",
+    "shareText": "Play {title}",
+    "linkCopied": "Link copied",
+    "copyFailed": "Could not copy. Copy the link from the address bar.",
+    "playOnPhone": "Play on your phone",
+    "scanQr": "Scan this code with your phone camera.",
+    "qrAlt": "QR code for this game page",
+    "report": "Report a problem",
+    "reportReason": "Reason",
+    "reasonNotLoading": "Game does not load",
+    "reasonControls": "Controls do not work",
+    "reasonInappropriate": "Inappropriate content",
+    "reasonOther": "Other",
+    "reportSend": "Send report",
+    "reportSent": "Thanks, your report was sent.",
+    "reportFailed": "Could not send. Please try again.",
+    "playerTitle": "{title} game",
+    "backToGames": "All games",
+    "notFound": "Game not found",
+    "about": "About this game",
+    "devices": "Playable on",
+    "related": "Related games"
+  },
+  "category": {
+    "browse": "Browse by category",
+    "title": "{name} games",
+    "empty": "No games in this category yet"
+  },
+  "tag": {
+    "title": "{tag} games"
+  }
+}
+
+===== apps\web\app\globals.css =====
+@import "tailwindcss";
+
+/* Dark is the default. Light applies only when <html data-theme="light"> (see lib/theme-script.ts). */
+:root {
+  color-scheme: dark;
+  --background: #0e0e10;
+  --foreground: #f2f2f3;
+  --surface: #161618;
+  --border: #26262a;
+  --muted: #9a9aa3;
+
+  /* --primary fills buttons and the play chip (white text on it). */
+  --primary: #0000ff;
+  --primary-hover: #2a2aff;
+  --primary-foreground: #ffffff;
+
+  /* --brand is the blue you can read on dark: text, icons, active tab, focus ring. */
+  --brand: #7a85ff;
+  --brand-foreground: #0e0e10;
+  --accent: var(--brand);
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #111113;
+  --surface: #f4f4f5;
+  --border: #e4e4e7;
+  --muted: #62626b;
+
+  --primary: #0000ff;
+  --primary-hover: #0000cc;
+  --primary-foreground: #ffffff;
+
+  --brand: #0000ff;
+  --brand-foreground: #ffffff;
+  --accent: var(--brand);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-rubik);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* One easing and one short duration for every transition on the site. */
+@theme {
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Interim: the old components say font-bold / font-semibold. Headings are 600 and 500 now. */
+  --font-weight-bold: 600;
+  --font-weight-semibold: 500;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Hover preview: a mouse on desktop, or keyboard focus. Touch screens never see it. */
+.card-preview {
+  display: none;
+}
+
+@keyframes card-preview-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .game-card:hover .card-preview,
+  .game-card:has(:focus-visible) .card-preview {
+    display: block;
+    /* 300 ms delay, so moving the mouse across the grid does not flash every card. */
+    animation: card-preview-in 150ms ease 300ms both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-card:hover .card-preview,
+  .game-card:has(:focus-visible) .card-preview {
+    animation: none;
+  }
+}
+
+/* Low Internet Mode: <html data-low-internet> is set by the script in app/layout.tsx. */
+html[data-low-internet] .card-preview {
+  display: none !important;
+}
+
+.card-block {
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+html[data-low-internet] .card-block {
+  display: flex;
+}
+
+/* A hidden lazy image is never downloaded. */
+html[data-low-internet] .card-thumb {
+  display: none;
+}
+
+/* Horizontal rows that scroll by touch or trackpad, without a visible scrollbar. */
+.scroll-row {
+  scrollbar-width: none;
+}
+
+.scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* Page scrollbar: thin, rounded, quiet. Horizontal rows and the sidebar keep theirs hidden (.scroll-row). */
+html::-webkit-scrollbar {
+  width: 12px;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+  border: 3px solid var(--background);
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, var(--foreground) 22%, var(--background));
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--foreground) 38%, var(--background));
+}
+
+html::-webkit-scrollbar-thumb:active {
+  background-color: var(--brand);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--foreground) 30%, var(--background)) transparent;
+  }
+}
+
+/* Phone carousel (first card lines up with the heading, the next card peeks in on the right). */
+.shelf-carousel {
+  --card: min(78vw, 20rem);
+  padding-inline: 1rem;
+  scroll-padding-inline: 1rem;
+}
+
+.shelf-carousel > li {
+  width: var(--card);
+}
+
+@media (min-width: 768px) {
+  .shelf-carousel {
+    padding-inline: 2rem;
+    scroll-padding-inline: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .shelf-carousel {
+    padding-inline: 0;
+    scroll-padding-inline: 0;
+  }
+
+  .shelf-carousel > li {
+    width: auto;
+  }
+}
+
+/* Category chips (phone and tablet). NavLink sets aria-current="page" on the active one. */
+.chip {
+  display: flex;
+  height: 2.5rem;
+  align-items: center;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--surface);
+  padding-inline: 1rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  transition-property: color, background-color, border-color;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.chip:hover {
+  border-color: var(--muted);
+  color: var(--foreground);
+}
+
+.chip[aria-current="page"] {
+  border-color: var(--foreground);
+  background: var(--foreground);
+  color: var(--background);
+}
+
+/* ==== phase6-fixes:start ==== */
+/* Page scrollbar: thin, rounded, quiet. The explicit values below beat any older "hide scrollbars" rule. */
+html {
+  overflow-y: scroll;
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+
+html::-webkit-scrollbar {
+  display: block;
+  width: 14px;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 4px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+  background-color: color-mix(in srgb, var(--foreground) 28%, transparent);
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--foreground) 46%, transparent);
+}
+
+html::-webkit-scrollbar-thumb:active {
+  background-color: var(--brand);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--foreground) 35%, transparent) transparent;
+  }
+}
+
+/* Phone carousel: the first card lines up with the heading, the next card peeks in on the right. */
+.shelf-carousel {
+  padding-inline: 1rem;
+  scroll-padding-inline: 1rem;
+}
+
+.shelf-carousel > li {
+  width: min(78vw, 20rem);
+  scroll-snap-align: start;
+}
+
+@media (min-width: 768px) {
+  .shelf-carousel {
+    padding-inline: 2rem;
+    scroll-padding-inline: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .shelf-carousel {
+    padding-inline: 0;
+    scroll-padding-inline: 0;
+  }
+
+  .shelf-carousel > li {
+    width: auto;
+  }
+}
+
+/* Card stats (plays and likes) show the moment the mouse is on the card. No delay. */
+@media (hover: hover) and (pointer: fine) {
+  .game-card:hover .card-preview,
+  .game-card:has(:focus-visible) .card-preview {
+    display: block;
+    animation: card-preview-in 100ms ease-out both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-card:hover .card-preview,
+  .game-card:has(:focus-visible) .card-preview {
+    animation: none;
+  }
+}
+
+html[data-low-internet] .card-preview {
+  display: none !important;
+}
+/* ==== phase6-fixes:end ==== */
+
+/* ==== mobile-safe-area:start ==== */
+/* Notched phones in landscape: keep the page out from under the notch. The values are 0 everywhere else. */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+/* ==== mobile-safe-area:end ==== */
+
+===== grep: devices =====
+apps\web\lib\games-query.ts:1: import { deviceSchema, type Device } from "@berryblue/shared";
+apps\web\lib\games-query.ts:7: export const DEVICES = deviceSchema.options;
+apps\web\lib\games-query.ts:13: device?: Device | undefined;
+apps\web\lib\games-query.ts:30: device: deviceSchema.optional().catch(undefined),
+apps\web\lib\games-query.ts:39: device: params.device,
+apps\web\lib\games-query.ts:48: if (state.device) params.set("device", state.device);
+apps\web\lib\games.ts:23: "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, play_count, like_count, dislike_count, categories(slug)";
+apps\web\lib\games.ts:27: "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, play_count, like_count, dislike_count, categories!inner(slug)";
+apps\web\lib\games.ts:64: devices: r.devices,
+apps\web\lib\games.ts:133: device: string | null,
+apps\web\lib\games.ts:154: if (device) {
+apps\web\lib\games.ts:155: countQuery = countQuery.contains("devices", [device]);
+apps\web\lib\games.ts:156: listQuery = listQuery.contains("devices", [device]);
+apps\web\lib\games.ts:197: filters.device ?? null,
+apps\web\lib\site.ts:3: description: "Free online games you can play instantly on any device.",
+apps\web\lib\static-pages.ts:39: "If a game does not work, please tell us the game name, your device and browser, and what happened. That helps us find the problem faster.",
+packages\shared\src\game.ts:3: export const deviceSchema = z.enum(["mobile", "tablet", "desktop"]);
+packages\shared\src\game.ts:26: devices: z.array(deviceSchema).min(1),
+packages\shared\src\game.ts:33: export type Device = z.infer<typeof deviceSchema>;

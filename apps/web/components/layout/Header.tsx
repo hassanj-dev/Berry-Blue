@@ -7,7 +7,7 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 export function Header() {
   return (
     <header className="relative z-40 border-b border-border bg-background lg:sticky lg:top-0">
-      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-2 gap-y-3 px-4 py-3 md:px-8 lg:flex-nowrap">
+      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-2 gap-y-2 px-4 py-2 md:gap-y-3 md:px-8 md:py-3 lg:flex-nowrap">
         <Logo className="order-1 lg:hidden" />
 
         <div className="order-2 ml-auto flex items-center lg:order-3">

@@ -310,3 +310,11 @@ html[data-low-internet] .card-preview {
   display: none !important;
 }
 /* ==== phase6-fixes:end ==== */
+
+/* ==== mobile-safe-area:start ==== */
+/* Notched phones in landscape: keep the page out from under the notch. The values are 0 everywhere else. */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+/* ==== mobile-safe-area:end ==== */

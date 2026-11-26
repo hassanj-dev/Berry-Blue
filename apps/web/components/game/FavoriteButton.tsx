@@ -1,5 +1,6 @@
 "use client";
 
+import { Bookmark } from "lucide-react";
 import { actionButton } from "@/components/game/action-styles";
 import { Icon } from "@/components/layout/icons";
 import { t } from "@/i18n";
@@ -17,7 +18,7 @@ export function FavoriteButton({ slug, title }: { slug: string; title: string })
       aria-label={t("card.favorite") + ": " + title}
       onClick={() => toggleFavorite(slug)}
       className={cn(
-        "absolute right-2 top-2 z-10 flex size-10 cursor-pointer items-center justify-center rounded-full transition-colors",
+        "absolute right-2 top-2 z-10 flex size-10 max-sm:size-9 cursor-pointer items-center justify-center rounded-full transition-colors",
         saved ? "bg-primary text-primary-foreground" : "bg-black/50 text-white hover:bg-black/70",
       )}
     >
@@ -39,7 +40,12 @@ export function FavoriteAction({ slug }: { slug: string }) {
       onClick={() => toggleFavorite(slug)}
       className={actionButton}
     >
-      <Icon name="heart" size={18} filled={saved} />
+      <Bookmark
+        size={18}
+        strokeWidth={1.5}
+        fill={saved ? "currentColor" : "none"}
+        aria-hidden="true"
+      />
     </button>
   );
 }

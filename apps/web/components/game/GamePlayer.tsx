@@ -1,6 +1,7 @@
 "use client";
 
 import { Maximize, Minimize, Play } from "lucide-react";
+import { iconProps } from "@/components/game/icon-style";
 import Image from "next/image";
 import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { actionButton } from "@/components/game/action-styles";
@@ -20,6 +21,8 @@ type GamePlayerProps = {
   actions?: ReactNode;
   // Second row, right side, before the fullscreen button: report and phone QR.
   meta?: ReactNode;
+  // Shown above the player (for example the "made for phones" notice).
+  notice?: ReactNode;
   gameId: string;
   slug: string;
 };
@@ -52,6 +55,7 @@ export function GamePlayer({
   stats,
   actions,
   meta,
+  notice,
 }: GamePlayerProps) {
   const [playing, setPlaying] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -99,11 +103,12 @@ export function GamePlayer({
 
   return (
     <div>
+      {notice}
       <div
         ref={boxRef}
         className={cn(
           "relative aspect-video w-full overflow-hidden border border-border bg-surface",
-          isFullscreen ? "rounded-none border-0" : "rounded-2xl",
+          isFullscreen ? "rounded-none border-0" : "rounded-2xl lg:max-h-[70dvh]",
         )}
       >
         {playing ? (
@@ -146,9 +151,9 @@ export function GamePlayer({
             onClick={toggleFullscreen}
             aria-label={fullscreenLabel}
             title={fullscreenLabel}
-            className="absolute bottom-3 right-3 z-10 flex size-10 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80 max-sm:hidden"
+            className="absolute bottom-3 right-3 z-10 flex size-10 cursor-pointer items-center justify-center rounded-full bg-black/75 text-white transition-colors hover:bg-black/90 max-sm:hidden"
           >
-            <Maximize size={18} strokeWidth={1.5} aria-hidden="true" />
+            <Maximize {...iconProps} aria-hidden="true" />
           </button>
         )}
 
@@ -159,9 +164,9 @@ export function GamePlayer({
             onClick={toggleFullscreen}
             aria-label={t("game.exitFullscreen")}
             title={t("game.exitFullscreen")}
-            className="absolute right-3 top-3 z-10 flex size-11 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+            className="absolute right-3 top-3 z-10 flex size-11 cursor-pointer items-center justify-center rounded-full bg-black/75 text-white transition-colors hover:bg-black/90"
           >
-            <Minimize size={20} strokeWidth={1.5} aria-hidden="true" />
+            <Minimize {...iconProps} aria-hidden="true" />
           </button>
         )}
       </div>
@@ -181,9 +186,9 @@ export function GamePlayer({
                 className={actionButton + " sm:hidden"}
               >
                 {isFullscreen ? (
-                  <Minimize size={18} strokeWidth={1.5} aria-hidden="true" />
+                  <Minimize {...iconProps} aria-hidden="true" />
                 ) : (
-                  <Maximize size={18} strokeWidth={1.5} aria-hidden="true" />
+                  <Maximize {...iconProps} aria-hidden="true" />
                 )}
               </button>
             )}

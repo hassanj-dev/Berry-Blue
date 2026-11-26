@@ -7,6 +7,7 @@
   --foreground: #f2f2f3;
   --surface: #161618;
   --border: #26262a;
+  --border-strong: #6b6b75;
   --muted: #9a9aa3;
 
   /* --primary fills buttons and the play chip (white text on it). */
@@ -26,6 +27,7 @@ html[data-theme="light"] {
   --foreground: #111113;
   --surface: #f4f4f5;
   --border: #e4e4e7;
+  --border-strong: #8a8a93;
   --muted: #62626b;
 
   --primary: #0000ff;
@@ -42,6 +44,7 @@ html[data-theme="light"] {
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-muted: var(--muted);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);

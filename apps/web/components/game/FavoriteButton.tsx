@@ -1,7 +1,8 @@
 "use client";
 
 import { Bookmark } from "lucide-react";
-import { actionButton } from "@/components/game/action-styles";
+import { iconProps } from "@/components/game/icon-style";
+import { saveButton } from "@/components/game/action-styles";
 import { Icon } from "@/components/layout/icons";
 import { t } from "@/i18n";
 import { cn } from "@/lib/cn";
@@ -38,14 +39,9 @@ export function FavoriteAction({ slug }: { slug: string }) {
       aria-label={t("favorites.action")}
       title={t("favorites.action")}
       onClick={() => toggleFavorite(slug)}
-      className={actionButton}
+      className={saveButton}
     >
-      <Bookmark
-        size={18}
-        strokeWidth={1.5}
-        fill={saved ? "currentColor" : "none"}
-        aria-hidden="true"
-      />
+      <Bookmark {...iconProps} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
     </button>
   );
 }

@@ -1,11 +1,13 @@
 "use client";
 
 import { ThumbsDown, ThumbsUp } from "lucide-react";
-import { useState, useSyncExternalStore, useTransition } from "react";
+import { iconProps } from "@/components/game/icon-style";
+import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { actionButton } from "@/components/game/action-styles";
 import { t } from "@/i18n";
 import type { VoteCounts } from "@/lib/vote-count";
 import { castVote } from "@/lib/vote-actions";
+import { publishCounts } from "@/lib/vote-store";
 
 type Vote = -1 | 0 | 1;
 
@@ -69,6 +71,11 @@ export function VoteButtons({
   const [counts, setCounts] = useState(initialCounts);
   const [pending, startTransition] = useTransition();
 
+  // Tell the star rating which numbers are on screen (also when the page is opened again).
+  useEffect(() => {
+    publishCounts(gameId, initialCounts);
+  }, [gameId, initialCounts]);
+
   function choose(target: 1 | -1) {
     if (pending) return;
 
@@ -77,15 +84,19 @@ export function VoteButtons({
     const before = counts;
 
     // Show the change at once, then replace it with the real numbers (or undo it if saving failed).
-    setCounts(applyVote(before, from, to));
+    const optimistic = applyVote(before, from, to);
+    setCounts(optimistic);
+    publishCounts(gameId, optimistic);
     saveVote(gameId, to);
 
     startTransition(async () => {
       const result = await castVote(gameId, from, to);
       if (result) {
         setCounts(result);
+        publishCounts(gameId, result);
       } else {
         setCounts(before);
+        publishCounts(gameId, before);
         saveVote(gameId, from);
       }
     });
@@ -114,12 +125,7 @@ export function VoteButtons({
         onClick={() => choose(1)}
         className={actionButton}
       >
-        <ThumbsUp
-          size={18}
-          strokeWidth={1.5}
-          fill={vote === 1 ? "currentColor" : "none"}
-          aria-hidden="true"
-        />
+        <ThumbsUp {...iconProps} fill={vote === 1 ? "currentColor" : "none"} aria-hidden="true" />
         <span className="tabular-nums">{likes}</span>
       </button>
       <button
@@ -132,8 +138,7 @@ export function VoteButtons({
         className={actionButton}
       >
         <ThumbsDown
-          size={18}
-          strokeWidth={1.5}
+          {...iconProps}
           fill={vote === -1 ? "currentColor" : "none"}
           aria-hidden="true"
         />

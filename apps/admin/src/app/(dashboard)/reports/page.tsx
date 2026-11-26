@@ -14,6 +14,7 @@ const REASONS: Record<string, string> = {
 type ReportRow = {
   id: string;
   reason: string;
+  details: string | null;
   created_at: string;
   games: { title: string; slug: string; is_published: boolean } | null;
 };
@@ -23,7 +24,7 @@ export default async function ReportsPage() {
 
   const { data, count, error } = await createSecretClient()
     .from("game_reports")
-    .select("id, reason, created_at, games(title, slug, is_published)", { count: "exact" })
+    .select("id, reason, details, created_at, games(title, slug, is_published)", { count: "exact" })
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -57,7 +58,14 @@ export default async function ReportsPage() {
                     <span className="font-medium">{report.games?.title ?? "-"}</span>
                     <span className="block text-muted">{report.games?.slug}</span>
                   </td>
-                  <td className="px-3 py-2">{REASONS[report.reason] ?? report.reason}</td>
+                  <td className="px-3 py-2">
+                    {REASONS[report.reason] ?? report.reason}
+                    {report.details && (
+                      <span className="mt-1 block max-w-md whitespace-pre-wrap break-words text-muted">
+                        {report.details}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2">{report.games?.is_published ? "Live" : "Hidden"}</td>
                 </tr>
               ))}

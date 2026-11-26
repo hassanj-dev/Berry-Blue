@@ -43,7 +43,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
       <FavoriteButton slug={game.slug} title={game.title} />
 
       <div className="z-[1] flex flex-col gap-1.5 bg-linear-to-t from-black/90 via-black/55 to-transparent p-3 pr-14 pt-14 md:p-4 md:pr-16 md:pt-16">
-        <h3 className="truncate text-sm font-medium text-white max-sm:line-clamp-2 max-sm:whitespace-normal max-sm:leading-snug md:text-base">
+        <h3 className="line-clamp-2 text-sm font-medium leading-snug text-white md:text-base">
           <Link
             href={"/game/" + game.slug}
             aria-label={t("card.playAria", { title: game.title })}

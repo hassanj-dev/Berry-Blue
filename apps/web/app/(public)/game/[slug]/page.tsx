@@ -1,4 +1,5 @@
 import { ArrowLeft, ChevronRight } from "lucide-react";
+import { iconProps } from "@/components/game/icon-style";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,10 +12,9 @@ import { GamePlayer } from "@/components/game/GamePlayer";
 import { GameRating } from "@/components/game/GameRating";
 import { PlayCount } from "@/components/game/PlayCount";
 import { GameReport } from "@/components/game/GameReport";
-import { GameQr, ShareButton } from "@/components/game/GameShare";
+import { GameDesktopNotice, GameQr, ShareButton } from "@/components/game/GameShare";
 import { GameVotes } from "@/components/game/GameVotes";
 import { t } from "@/i18n";
-import { cn } from "@/lib/cn";
 import { getGameBySlug, getRelatedGames } from "@/lib/games";
 
 type Params = Promise<{ slug: string }>;
@@ -50,6 +50,9 @@ async function GameContent({ params }: { params: Params }) {
 
   const related = await getRelatedGames(game);
 
+  // A game that is not made for desktop gets a notice and a QR button on desktop screens.
+  const madeForDesktop = game.devices.includes("desktop");
+
   return (
     <div className="flex flex-col gap-5 sm:gap-8 md:gap-10">
       <div className="flex items-start gap-3 md:-mb-5">
@@ -59,19 +62,13 @@ async function GameContent({ params }: { params: Params }) {
           title={t("game.backToGames")}
           className={actionButton + " shrink-0"}
         >
-          <ArrowLeft size={18} strokeWidth={1.5} aria-hidden="true" />
+          <ArrowLeft {...iconProps} aria-hidden="true" />
         </Link>
         <div className="min-w-0 max-sm:pt-1.5">
           <h1 className="text-2xl font-[600] max-sm:text-[22px] max-sm:leading-tight md:text-3xl">
             {game.title}
           </h1>
-          {/* From 640px up the category stays under the title; on phones it is a pill in the About section. */}
-          <p className="mt-1 text-sm capitalize max-sm:hidden">
-            <Link href={"/category/" + game.categorySlug} className="text-muted hover:underline">
-              {game.categorySlug}
-            </Link>
-          </p>
-          {/* Phone info row: rating and views. */}
+          {/* Info row: like percentage and views. The category is a pill in the About section. */}
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
             <Suspense fallback={null}>
               <GameRating gameId={game.id} className="font-medium" />
@@ -89,6 +86,7 @@ async function GameContent({ params }: { params: Params }) {
         title={game.title}
         thumbnailUrl={game.thumbnailUrl}
         embedUrl={game.embedUrl}
+        notice={madeForDesktop ? undefined : <GameDesktopNotice />}
         stats={
           <>
             <Suspense fallback={null}>
@@ -118,11 +116,11 @@ async function GameContent({ params }: { params: Params }) {
           <p className="text-muted max-sm:text-[15px] max-sm:leading-relaxed">{game.description}</p>
         )}
 
-        <ul className={cn("flex flex-wrap gap-2", game.tags.length === 0 && "sm:hidden")}>
-          <li className="sm:hidden">
+        <ul className="flex flex-wrap gap-2">
+          <li>
             <Link
               href={"/category/" + game.categorySlug}
-              className="inline-block rounded-full border border-brand/40 px-3 py-1 text-xs capitalize text-brand"
+              className="inline-block rounded-full bg-brand/15 px-3 py-1 text-xs capitalize text-brand hover:bg-brand/25"
             >
               {game.categorySlug}
             </Link>
@@ -131,7 +129,7 @@ async function GameContent({ params }: { params: Params }) {
             <li key={tag}>
               <Link
                 href={"/tag/" + encodeURIComponent(tag)}
-                className="inline-block rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:border-muted hover:text-foreground"
+                className="inline-block rounded-full bg-foreground/10 px-3 py-1 text-xs text-foreground transition-colors hover:bg-foreground/20"
               >
                 {tag}
               </Link>
@@ -139,13 +137,13 @@ async function GameContent({ params }: { params: Params }) {
           ))}
         </ul>
 
-        <div className="flex items-center gap-3 text-muted">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-muted">
           <span className="text-sm">{t("game.devices")}</span>
-          <ul aria-label={t("game.devices")} className="flex gap-2">
+          <ul aria-label={t("game.devices")} className="flex flex-wrap gap-3">
             {game.devices.map((device) => (
-              <li key={device}>
+              <li key={device} className="flex items-center gap-1.5 text-sm">
                 <DeviceIcon device={device} />
-                <span className="sr-only">{t(`devices.${device}`)}</span>
+                <span>{t(`devices.${device}`)}</span>
               </li>
             ))}
           </ul>

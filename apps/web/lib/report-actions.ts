@@ -7,11 +7,12 @@ import { createSecretClient } from "@/lib/supabase/secret";
 const inputSchema = z.object({
   gameId: z.uuid(),
   reason: z.enum(["not_loading", "broken_controls", "inappropriate", "other"]),
+  details: z.string().trim().max(500),
 });
 
 // Saves one report. Returns false on any failure.
-export async function reportGame(gameId: string, reason: string): Promise<boolean> {
-  const parsed = inputSchema.safeParse({ gameId, reason });
+export async function reportGame(gameId: string, reason: string, details = ""): Promise<boolean> {
+  const parsed = inputSchema.safeParse({ gameId, reason, details });
   if (!parsed.success) return false;
 
   try {
@@ -23,9 +24,16 @@ export async function reportGame(gameId: string, reason: string): Promise<boolea
       .maybeSingle();
     if (!game) return false;
 
+    // A message is only kept for "other".
+    const message = parsed.data.reason === "other" ? parsed.data.details : "";
+
     const { error } = await createSecretClient()
       .from("game_reports")
-      .insert({ game_id: parsed.data.gameId, reason: parsed.data.reason });
+      .insert({
+        game_id: parsed.data.gameId,
+        reason: parsed.data.reason,
+        details: message || null,
+      });
 
     if (error) {
       console.error("reportGame failed:", error.message);

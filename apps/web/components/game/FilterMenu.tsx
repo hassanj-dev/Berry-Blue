@@ -35,7 +35,7 @@ export function FilterMenu({
 
   return (
     <details ref={ref} className="group sm:relative">
-      <summary className="flex h-10 cursor-pointer list-none items-center gap-1.5 rounded-full bg-foreground/10 px-4 text-sm font-medium capitalize hover:bg-foreground/20 [&::-webkit-details-marker]:hidden">
+      <summary className="flex h-10 cursor-pointer list-none items-center gap-1.5 rounded-full bg-foreground/10 px-4 text-sm font-medium capitalize max-sm:gap-1 max-sm:px-3 max-sm:text-xs hover:bg-foreground/20 [&::-webkit-details-marker]:hidden">
         {label}
         <ChevronDown size={16} aria-hidden="true" className="group-open:rotate-180" />
       </summary>
@@ -44,7 +44,7 @@ export function FilterMenu({
           if ((event.target as HTMLElement).closest("a")) ref.current?.removeAttribute("open");
         }}
         className={
-          "z-50 max-h-[50dvh] overflow-y-auto rounded-2xl border border-border bg-surface p-2 shadow-xl max-sm:fixed max-sm:inset-x-3 max-sm:bottom-[calc(4.5rem+env(safe-area-inset-bottom))] sm:absolute sm:top-full sm:mt-2 sm:w-64 " +
+          "z-50 max-h-[50dvh] overflow-y-auto rounded-2xl border border-border bg-surface p-2 shadow-xl max-sm:fixed max-sm:inset-x-3 max-sm:bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:absolute sm:top-full sm:mt-2 sm:w-64 " +
           (align === "right" ? "sm:right-0" : "sm:left-0")
         }
       >

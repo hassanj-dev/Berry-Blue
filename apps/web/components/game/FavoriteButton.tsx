@@ -19,11 +19,11 @@ export function FavoriteButton({ slug, title }: { slug: string; title: string })
       aria-label={t("card.favorite") + ": " + title}
       onClick={() => toggleFavorite(slug)}
       className={cn(
-        "absolute right-2 top-2 z-10 flex size-10 max-sm:size-9 cursor-pointer items-center justify-center rounded-full transition-colors",
+        "card-fav absolute right-2 top-2 z-10 flex size-8 cursor-pointer items-center justify-center rounded-full transition",
         saved ? "bg-primary text-primary-foreground" : "bg-black/50 text-white hover:bg-black/70",
       )}
     >
-      <Icon name="heart" size={18} filled={saved} />
+      <Icon name="heart" size={16} filled={saved} />
     </button>
   );
 }

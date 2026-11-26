@@ -4,7 +4,7 @@ import { ArrowUpDown, ChevronDown } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 
 // A dropdown built on <details>. It closes on a choice, an outside click or Esc.
-// On phones the panel opens as a sheet above the bottom navigation.
+// On phones the panel opens right under the row of filters, as wide as the row.
 export function FilterMenu({
   label,
   align = "left",
@@ -54,7 +54,7 @@ export function FilterMenu({
           if ((event.target as HTMLElement).closest("a")) ref.current?.removeAttribute("open");
         }}
         className={
-          "z-50 max-h-[50dvh] overflow-y-auto rounded-2xl border border-border bg-surface p-2 shadow-xl max-sm:fixed max-sm:inset-x-3 max-sm:bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:absolute sm:top-full sm:mt-2 sm:w-64 " +
+          "absolute top-full z-50 mt-2 max-h-[50dvh] overflow-y-auto rounded-2xl border border-border bg-surface p-2 shadow-xl max-sm:inset-x-0 sm:w-64 " +
           (align === "right" ? "sm:right-0" : "sm:left-0")
         }
       >

@@ -324,14 +324,15 @@ body {
 
 /* ==== card-stats-slide:start ==== */
 /* Mouse on a card: title and category slide up a little, the plays and likes fade in underneath. */
+/* Margin, not transform: a transform would make the card link's ::after cover only this box. */
 .card-info {
-  transition: transform 150ms ease-out;
+  transition: margin-bottom 150ms ease-out;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .game-card:hover .card-info,
   .game-card:has(:focus-visible) .card-info {
-    transform: translateY(-1.5rem);
+    margin-bottom: 1.5rem;
   }
 }
 
@@ -342,7 +343,7 @@ body {
 }
 
 html[data-low-internet] .game-card .card-info {
-  transform: none;
+  margin-bottom: 0;
 }
 /* card-lift */
 .game-card {
@@ -370,3 +371,150 @@ html[data-low-internet] .game-card {
   box-shadow: none !important;
 }
 /* ==== card-stats-slide:end ==== */
+
+/* ==== not-found-truck:start ==== */
+/* 404 page: a small truck in the site colours. */
+.nf-truck {
+  position: relative;
+  display: flex;
+  width: 160px;
+  height: 80px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  overflow-x: hidden;
+}
+
+.nf-body {
+  width: 104px;
+  margin-bottom: 5px;
+  animation: nf-bounce 1s linear infinite;
+}
+
+.nf-tires {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  width: 104px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 12px;
+}
+
+.nf-tires svg {
+  width: 19px;
+}
+
+.nf-stroke {
+  stroke: #282828;
+}
+
+.nf-cargo {
+  fill: #dfdfdf;
+}
+
+.nf-cab {
+  fill: var(--primary);
+}
+
+.nf-window {
+  fill: var(--brand);
+}
+
+.nf-tire-out {
+  fill: #282828;
+  stroke: #282828;
+}
+
+.nf-tire-in {
+  fill: #dfdfdf;
+}
+
+.nf-road {
+  position: relative;
+  width: 100%;
+  height: 2px;
+  align-self: flex-end;
+  border-radius: 3px;
+  background: var(--border-strong);
+}
+
+.nf-road::before,
+.nf-road::after {
+  content: "";
+  position: absolute;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--border-strong);
+  animation: nf-road 1.4s linear infinite;
+}
+
+.nf-road::before {
+  right: -50%;
+  width: 16px;
+  border-left: 8px solid var(--background);
+}
+
+.nf-road::after {
+  right: -65%;
+  width: 8px;
+  border-left: 3px solid var(--background);
+}
+
+@keyframes nf-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+@keyframes nf-road {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-280px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-body,
+  .nf-road::before,
+  .nf-road::after {
+    animation: none;
+  }
+}
+
+html[data-low-internet] .nf-body,
+html[data-low-internet] .nf-road::before,
+html[data-low-internet] .nf-road::after {
+  animation: none;
+}
+/* ==== not-found-truck:end ==== */
+
+/* card-fav */
+@media (hover: hover) and (pointer: fine) {
+  .game-card .card-fav {
+    opacity: 0;
+  }
+
+  .game-card:hover .card-fav,
+  .game-card .card-fav:focus-visible {
+    opacity: 1;
+  }
+}
+
+/* card-fav-hide */
+@media (any-hover: hover) {
+  .game-card .card-fav {
+    opacity: 0 !important;
+  }
+
+  .game-card:hover .card-fav,
+  .game-card .card-fav:focus-visible {
+    opacity: 1 !important;
+  }
+}

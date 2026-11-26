@@ -80,7 +80,7 @@ export function GamesFilterBar({ sort, filters, categories, tags }: GamesFilterB
 
   return (
     <section aria-label={t("games.filters.label")} className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="relative flex flex-wrap items-center gap-2">
         {categories.length > 0 && (
           <FilterMenu label={t("games.filters.category")}>
             <Option

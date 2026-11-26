@@ -82,7 +82,7 @@ function ResultsBody({
         <p className="text-muted">{hasFilters ? t("games.noMatch") : t("games.empty")}</p>
       ) : (
         <>
-          <div className="flex items-center justify-between gap-3">
+          <div className="relative flex items-center justify-between gap-3">
             <p className="text-sm text-muted">
               {t("games.showing", { from, to, total: result.total })}
             </p>

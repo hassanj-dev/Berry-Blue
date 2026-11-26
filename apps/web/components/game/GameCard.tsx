@@ -1,4 +1,3 @@
-import { ThumbsUp } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Game } from "@berryblue/shared";
@@ -59,7 +58,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
         </div>
       ) : null}
 
-      <div className="z-[1] flex flex-col gap-1.5 bg-linear-to-t from-black/90 via-black/55 to-transparent p-3 pr-14 pt-14 md:p-4 md:pr-16 md:pt-16">
+      <div className="z-[1] flex flex-col gap-1.5 bg-linear-to-t from-black/90 via-black/55 to-transparent p-3 pt-14 md:p-4 md:pt-16">
         <div className="card-info flex flex-col gap-1.5">
           <h3 className="line-clamp-2 text-sm font-medium leading-snug text-white md:text-base">
             <Link
@@ -77,20 +76,13 @@ export function GameCard({ game, priority = false }: GameCardProps) {
             </span>
             {hasStats ? (
               <span className="flex items-center gap-1 text-xs font-medium tabular-nums text-white sm:hidden">
-                <ThumbsUp size={12} strokeWidth={1.5} aria-hidden="true" />
-                {compact.format(game.likeCount ?? 0)}
+                <PlayIcon size={12} />
+                {compact.format(game.playCount ?? 0)}
               </span>
             ) : null}
           </div>
         </div>
       </div>
-
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-3 right-3 z-[1] flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground md:bottom-4 md:right-4 md:size-10"
-      >
-        <PlayIcon size={14} />
-      </span>
     </article>
   );
 }

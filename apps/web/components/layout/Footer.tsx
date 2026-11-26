@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FaDiscord, FaInstagram, FaLinkedinIn, FaTiktok, FaYoutube } from "react-icons/fa6";
 import { t } from "@/i18n";
+import { Logo } from "@/components/layout/Logo";
 import { siteConfig } from "@/lib/site";
 
 // An empty href means the page does not exist yet: the name is shown without a link.
@@ -56,15 +57,7 @@ export function Footer() {
     <footer className="mt-4 overflow-hidden border-t border-border [container-type:inline-size]">
       <div className="mx-auto grid max-w-[1400px] grid-cols-2 gap-x-6 gap-y-10 px-4 pt-14 text-sm md:grid-cols-4 md:px-8 xl:grid-cols-[2fr_1fr_1fr_1fr_1fr]">
         <div className="col-span-2 md:col-span-4 xl:col-span-1">
-          <Link href="/" className="flex items-center gap-2 text-xl font-[600]">
-            {/* Placeholder mark until the real logo is ready. */}
-            <svg viewBox="0 0 32 32" className="size-8" aria-hidden="true">
-              <rect width="32" height="32" rx="9" className="fill-primary" />
-              <circle cx="12" cy="19" r="6" fill="#fff" />
-              <circle cx="21" cy="12" r="4" fill="#fff" opacity="0.7" />
-            </svg>
-            {siteConfig.name}
-          </Link>
+          <Logo className="text-xl" />
           <p className="mt-3 max-w-xs text-muted">{t("footer.tagline")}</p>
           <ul aria-label={t("footer.social")} className="mt-5 flex flex-wrap gap-2">
             {social.map(({ name, Glyph, url }) => (

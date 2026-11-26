@@ -17,7 +17,7 @@ async function SidebarCategories() {
   if (categories.length === 0) return null;
 
   return (
-    <nav aria-labelledby="sidebar-categories" className="mt-4 border-t border-border pt-6">
+    <nav aria-labelledby="sidebar-categories" className="border-t border-border pt-3">
       <h2
         id="sidebar-categories"
         className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted"
@@ -49,7 +49,7 @@ export function Sidebar() {
       <div className="scroll-row sticky top-0 flex h-dvh flex-col gap-3 overflow-y-auto overflow-x-hidden px-3 py-4">
         <Logo className="h-9 px-3" />
 
-        <nav aria-label={t("nav.main")}>
+        <nav aria-label={t("nav.main")} className="mt-2">
           <Suspense fallback={null}>
             <ul className="flex flex-col gap-0.5">
               {sidebarNav.map((item) => (

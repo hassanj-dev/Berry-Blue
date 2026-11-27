@@ -8,7 +8,7 @@ import { t } from "@/i18n";
 
 export type GameCardData = Pick<
   Game,
-  "slug" | "title" | "categorySlug" | "devices" | "tags" | "thumbnailUrl"
+  "slug" | "title" | "categorySlug" | "devices" | "tags" | "thumbnailUrl" | "thumbFocusX"
 > & {
   description?: string | undefined;
   playCount?: number | undefined;
@@ -34,9 +34,10 @@ export function GameCard({ game, priority = false }: GameCardProps) {
         src={game.thumbnailUrl}
         alt=""
         fill
-        sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 28vw, 78vw"
+        sizes="(min-width: 1280px) 50vw, (min-width: 1024px) 62vw, 175vw"
         priority={priority}
         className="card-thumb object-cover"
+        style={{ objectPosition: `${game.thumbFocusX ?? 50}% 50%` }}
       />
       <ThumbBlock title={game.title} className="absolute inset-0 text-5xl" />
       <FavoriteButton slug={game.slug} title={game.title} />

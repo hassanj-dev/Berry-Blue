@@ -1,4 +1,4 @@
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import {
   categorySchema,
   gameSchema,
@@ -20,11 +20,11 @@ const SORT_COLUMN = {
 } as const;
 
 const GAME_COLUMNS =
-  "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, play_count, like_count, dislike_count, categories(slug)";
+  "id, slug, title, description, meta_title, meta_description, thumb_focus_x, thumbnail_url, embed_url, tags, devices, provider, created_at, play_count, like_count, dislike_count, categories(slug)";
 
 // "!inner" means: only games whose category matches the filter.
 const GAME_COLUMNS_INNER =
-  "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, play_count, like_count, dislike_count, categories!inner(slug)";
+  "id, slug, title, description, meta_title, meta_description, thumb_focus_x, thumbnail_url, embed_url, tags, devices, provider, created_at, play_count, like_count, dislike_count, categories!inner(slug)";
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
 
@@ -57,6 +57,9 @@ function parseBase(row: unknown) {
     slug: r.slug,
     title: r.title,
     description: r.description,
+    metaTitle: r.meta_title,
+    metaDescription: r.meta_description,
+    thumbFocusX: r.thumb_focus_x,
     thumbnailUrl: r.thumbnail_url,
     embedUrl: r.embed_url,
     categorySlug: category?.slug,
@@ -89,7 +92,8 @@ function parseRows(rows: unknown[] | null): Game[] {
 
 async function loadShelf(shelf: ShelfName, limit: number): Promise<Game[]> {
   "use cache";
-  cacheLife("minutes");
+  cacheLife({ stale: 30, revalidate: 60, expire: 3600 });
+  cacheTag("games");
 
   const supabase = createPublicClient();
 
@@ -134,7 +138,8 @@ async function loadGamesPage(
   tag: string | null,
 ): Promise<GamesPage> {
   "use cache";
-  cacheLife("minutes");
+  cacheLife({ stale: 30, revalidate: 60, expire: 3600 });
+  cacheTag("games");
 
   const supabase = createPublicClient();
 
@@ -207,7 +212,8 @@ export async function getGamesPage(
 // null = nahi mila. Database error par throw (error page), taake masla cache na ho.
 export async function getGameBySlug(slug: string): Promise<Game | null> {
   "use cache";
-  cacheLife("minutes");
+  cacheLife({ stale: 30, revalidate: 60, expire: 3600 });
+  cacheTag("games");
 
   // URL se aane wali value par bharosa nahi: ghalat slug par database tak jaana hi nahi.
   if (!SLUG_PATTERN.test(slug)) return null;
@@ -244,7 +250,8 @@ async function loadRelatedGames(
   limit: number,
 ): Promise<Game[]> {
   "use cache";
-  cacheLife("minutes");
+  cacheLife({ stale: 30, revalidate: 60, expire: 3600 });
+  cacheTag("games");
 
   const supabase = createPublicClient();
 
@@ -305,7 +312,7 @@ export async function getRelatedGames(game: Game, limit = 4): Promise<Game[]> {
 
 async function loadCategories(): Promise<Category[]> {
   "use cache";
-  cacheLife("hours");
+  cacheLife({ stale: 30, revalidate: 3600, expire: 86400 });
 
   const supabase = createPublicClient();
 
@@ -337,7 +344,7 @@ export async function getCategories(): Promise<Category[]> {
 
 export async function getCategoryBySlug(slug: string): Promise<Category | null> {
   "use cache";
-  cacheLife("hours");
+  cacheLife({ stale: 30, revalidate: 3600, expire: 86400 });
 
   if (!SLUG_PATTERN.test(slug)) return null;
 
@@ -360,7 +367,8 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
 
 async function loadCategoryGames(categorySlug: string, limit: number): Promise<Game[]> {
   "use cache";
-  cacheLife("minutes");
+  cacheLife({ stale: 30, revalidate: 60, expire: 3600 });
+  cacheTag("games");
 
   const supabase = createPublicClient();
 
@@ -395,7 +403,8 @@ export async function getCategoryGames(
 
 async function loadTagGames(tag: string, limit: number): Promise<Game[]> {
   "use cache";
-  cacheLife("minutes");
+  cacheLife({ stale: 30, revalidate: 60, expire: 3600 });
+  cacheTag("games");
 
   const supabase = createPublicClient();
 

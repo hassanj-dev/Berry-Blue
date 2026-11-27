@@ -7,7 +7,7 @@ const SLUG_PATTERN = /^[a-z0-9-]+$/;
 
 async function loadTags(): Promise<TagOption[]> {
   "use cache";
-  cacheLife("hours");
+  cacheLife({ stale: 30, revalidate: 3600, expire: 86400 });
 
   const { data, error } = await createPublicClient()
     .from("games")

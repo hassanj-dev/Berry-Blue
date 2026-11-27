@@ -10,9 +10,11 @@ import { t } from "@/i18n";
 import { cn } from "@/lib/cn";
 
 export type HeroSlide = {
-  slug: string;
+  id: string;
+  href: string;
+  favoriteSlug?: string | undefined;
   title: string;
-  categorySlug: string;
+  tag: string;
   description: string;
   thumbnailUrl: string;
 };
@@ -115,7 +117,7 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
 
           return (
             <div
-              key={slide.slug}
+              key={slide.id}
               role="group"
               aria-roledescription="slide"
               aria-label={t("home.slider.slide", { n: i + 1, total: count })}
@@ -144,8 +146,8 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
               />
 
               <div className="absolute inset-0 flex flex-col items-start justify-end gap-3 p-4 pb-12 sm:p-6 sm:pb-14 lg:p-8 lg:pb-12">
-                <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium capitalize leading-none text-white backdrop-blur">
-                  {slide.categorySlug}
+                <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium capitalize leading-none text-white backdrop-blur empty:hidden">
+                  {slide.tag}
                 </span>
                 <div className="flex flex-col gap-1">
                   <h2 className="m-0 line-clamp-2 pb-1 text-2xl font-[600] leading-[1.2] text-white sm:text-3xl lg:max-w-lg lg:text-3xl">
@@ -159,13 +161,13 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Link
-                    href={"/game/" + slide.slug}
+                    href={slide.href}
                     className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary-hover lg:h-10 lg:px-6 lg:text-sm"
                   >
                     <Play size={14} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />
                     {t("game.playNow")}
                   </Link>
-                  <BannerFavorite slug={slide.slug} />
+                  {slide.favoriteSlug ? <BannerFavorite slug={slide.favoriteSlug} /> : null}
                 </div>
               </div>
             </div>
@@ -178,7 +180,7 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
               const active = i === index;
 
               return (
-                <li key={slide.slug}>
+                <li key={slide.id}>
                   <button
                     type="button"
                     onClick={() => setIndex(i)}

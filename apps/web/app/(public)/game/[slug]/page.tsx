@@ -26,8 +26,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   if (!game) return { title: t("game.notFound") };
 
   return {
-    title: game.title,
-    description: game.description || undefined,
+    title: game.metaTitle || game.title,
+    description: game.metaDescription || game.description || undefined,
   };
 }
 

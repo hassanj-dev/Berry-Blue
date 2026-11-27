@@ -1,22 +1,24 @@
 "use client";
 
 import { useActionState } from "react";
+import { Button } from "@/components/ui/Button";
 import { login, type LoginState } from "@/lib/auth-actions";
 
 const initialState: LoginState = { error: null };
 
-const inputClass = "rounded-lg border border-border bg-surface px-3 py-2";
+const inputClass =
+  "h-11 rounded-xl border border-border bg-background px-3 text-sm transition-colors placeholder:text-muted hover:border-border-strong focus-visible:border-brand";
 
 export function LoginForm() {
   const [state, formAction, pending] = useActionState(login, initialState);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
         Email
         <input name="email" type="email" required autoComplete="username" className={inputClass} />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
         Password
         <input
           name="password"
@@ -33,13 +35,9 @@ export function LoginForm() {
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-lg bg-brand px-4 py-2 font-semibold text-brand-foreground disabled:opacity-60"
-      >
+      <Button type="submit" disabled={pending} className="w-full">
         {pending ? "Logging in..." : "Login"}
-      </button>
+      </Button>
     </form>
   );
 }

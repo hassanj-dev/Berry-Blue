@@ -1,27 +1,68 @@
 @import "tailwindcss";
 
+/* Same tokens as apps/web. Dark is the default; light applies when <html data-theme="light">. */
 :root {
-  --background: #ffffff;
-  --foreground: #14122b;
-  --surface: #f5f4fb;
-  --border: #e3e0f3;
-  --muted: #6b6890;
-  --brand: #5b4bdb;
-  --brand-foreground: #ffffff;
-  --danger: #c62828;
+  color-scheme: dark;
+  --background: #0e0e10;
+  --foreground: #f2f2f3;
+  --surface: #161618;
+  --border: #26262a;
+  --border-strong: #6b6b75;
+  --muted: #9a9aa3;
+
+  --primary: #0000ff;
+  --primary-hover: #2a2aff;
+  --primary-foreground: #ffffff;
+
+  --brand: #7a85ff;
+  --brand-foreground: #0e0e10;
+  --accent: var(--brand);
+
+  --danger: #ff8a80;
+  --success: #6ee7a8;
+  --warning: #fbbf24;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f0d1f;
-    --foreground: #f1f0fb;
-    --surface: #1a1733;
-    --border: #2d2a52;
-    --muted: #a19fc8;
-    --brand: #8b7cff;
-    --brand-foreground: #0f0d1f;
-    --danger: #ff8a80;
-  }
+html[data-theme="light"] {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #111113;
+  --surface: #f4f4f5;
+  --border: #e4e4e7;
+  --border-strong: #8a8a93;
+  --muted: #62626b;
+
+  --primary: #0000ff;
+  --primary-hover: #0000cc;
+  --primary-foreground: #ffffff;
+
+  --brand: #0000ff;
+  --brand-foreground: #ffffff;
+  --accent: var(--brand);
+
+  --danger: #c62828;
+  --success: #15803d;
+  --warning: #b45309;
+}
+
+/* Login page is always dark, whatever theme was saved. Must stay after the light block. */
+html:has(.login-dark) {
+  color-scheme: dark;
+  --background: #0e0e10;
+  --foreground: #f2f2f3;
+  --surface: #161618;
+  --border: #26262a;
+  --border-strong: #6b6b75;
+  --muted: #9a9aa3;
+  --primary: #0000ff;
+  --primary-hover: #2a2aff;
+  --primary-foreground: #ffffff;
+  --brand: #7a85ff;
+  --brand-foreground: #0e0e10;
+  --accent: var(--brand);
+  --danger: #ff8a80;
+  --success: #6ee7a8;
+  --warning: #fbbf24;
 }
 
 @theme inline {
@@ -29,14 +70,101 @@
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-accent: var(--accent);
   --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --font-sans: var(--font-rubik);
+  --font-mono: var(--font-geist-mono);
+}
+
+@theme {
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Same as the website: font-bold = 600, font-semibold = 500. */
+  --font-weight-bold: 600;
+  --font-weight-semibold: 500;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Horizontal rows that scroll without a visible scrollbar (mobile nav chips). */
+.scroll-row {
+  scrollbar-width: none;
+}
+.scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* Page scrollbar: thin, rounded, quiet (same as the website). */
+html {
+  overflow-y: scroll;
+}
+html::-webkit-scrollbar {
+  width: 14px;
+}
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+html::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 4px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+  background-color: color-mix(in srgb, var(--foreground) 28%, transparent);
+}
+html::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--foreground) 46%, transparent);
+}
+html::-webkit-scrollbar-thumb:active {
+  background-color: var(--brand);
+}
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--foreground) 35%, transparent) transparent;
+  }
+}
+
+/* Nav chips (phone and tablet). The active one has aria-current="page". */
+.chip {
+  display: flex;
+  height: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--surface);
+  padding-inline: 1rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  transition-property: color, background-color, border-color;
+}
+.chip:hover {
+  border-color: var(--muted);
+  color: var(--foreground);
+}
+.chip[aria-current="page"] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
 }

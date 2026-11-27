@@ -1,0 +1,1820 @@
+﻿
+===== apps/web/app/page.tsx =====
+
+
+===== apps/web/components/game/HeroSlider.tsx =====
+"use client";
+
+import { Play } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useRef, useState, useSyncExternalStore, type FocusEvent } from "react";
+import { BannerFavorite } from "@/components/game/BannerFavorite";
+import { ThumbBlock } from "@/components/game/ThumbBlock";
+import { t } from "@/i18n";
+import { cn } from "@/lib/cn";
+
+export type HeroSlide = {
+  slug: string;
+  title: string;
+  categorySlug: string;
+  description: string;
+  thumbnailUrl: string;
+};
+
+// How long one slide stays.
+const SLIDE_MS = 4000;
+
+function subscribeVisibility(onChange: () => void) {
+  document.addEventListener("visibilitychange", onChange);
+  return () => document.removeEventListener("visibilitychange", onChange);
+}
+
+// Low Internet Mode sets data-low-internet on <html>. No autoplay there.
+function subscribeLowInternet(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-low-internet"],
+  });
+  return () => observer.disconnect();
+}
+
+function getLowInternet() {
+  return document.documentElement.hasAttribute("data-low-internet");
+}
+
+export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
+  const count = slides.length;
+  const [index, setIndex] = useState(0);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+
+  const tabHidden = useSyncExternalStore(
+    subscribeVisibility,
+    () => document.hidden,
+    () => false,
+  );
+  // true on the server, so there is no autoplay until the browser has checked.
+  const lowInternet = useSyncExternalStore(subscribeLowInternet, getLowInternet, () => true);
+
+  const running = count > 1 && !lowInternet && !hovered && !focused && !tabHidden;
+
+  // One timer per slide. Changing the slide (or clicking a dot) restarts it.
+  useEffect(() => {
+    if (!running) return;
+    const id = window.setTimeout(() => {
+      setIndex((current) => (current + 1) % count);
+    }, SLIDE_MS);
+    return () => window.clearTimeout(id);
+  }, [running, index, count]);
+
+  function go(step: number) {
+    setIndex((current) => (current + step + count) % count);
+  }
+
+  function handleFocus(event: FocusEvent<HTMLElement>) {
+    // Only keyboard focus pauses. A mouse click on a dot must not freeze the slideshow.
+    if (event.target.matches(":focus-visible")) setFocused(true);
+  }
+
+  function handleBlur(event: FocusEvent<HTMLElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
+  }
+
+  return (
+    <section
+      aria-roledescription="carousel"
+      aria-label={t("home.slider.label")}
+      className="relative isolate touch-pan-y overflow-hidden rounded-3xl bg-surface"
+      // Only a real mouse pauses on hover. On a phone a tap would leave the slideshow stuck.
+      onPointerEnter={(event) => {
+        if (event.pointerType === "mouse") setHovered(true);
+      }}
+      onPointerLeave={() => setHovered(false)}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onKeyDown={(event) => {
+        if (count < 2) return;
+        if (event.key === "ArrowLeft") go(-1);
+        else if (event.key === "ArrowRight") go(1);
+      }}
+      onTouchStart={(event) => {
+        touchStartX.current = event.touches[0]?.clientX ?? null;
+      }}
+      onTouchEnd={(event) => {
+        const start = touchStartX.current;
+        touchStartX.current = null;
+        if (start === null) return;
+        const distance = (event.changedTouches[0]?.clientX ?? start) - start;
+        if (Math.abs(distance) > 50) go(distance < 0 ? 1 : -1);
+      }}
+    >
+      <div
+        className="relative aspect-[16/11] sm:aspect-[2/1] lg:aspect-auto lg:h-[clamp(16rem,40vh,22rem)]"
+        aria-live={running ? "off" : "polite"}
+      >
+        {slides.map((slide, i) => {
+          const active = i === index;
+
+          return (
+            <div
+              key={slide.slug}
+              role="group"
+              aria-roledescription="slide"
+              aria-label={t("home.slider.slide", { n: i + 1, total: count })}
+              inert={!active}
+              className={cn(
+                "absolute inset-0 transition-opacity duration-700 ease-out motion-reduce:transition-none",
+                active ? "z-[1] opacity-100" : "pointer-events-none opacity-0",
+              )}
+            >
+              <Image
+                src={slide.thumbnailUrl}
+                alt=""
+                fill
+                sizes="(min-width: 1024px) 70vw, 100vw"
+                priority={i === 0}
+                className="card-thumb object-cover"
+              />
+              <ThumbBlock title={slide.title} className="absolute inset-0 text-8xl" />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent lg:bg-linear-to-r"
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-x-0 bottom-0 hidden h-24 bg-linear-to-t from-black/50 to-transparent lg:block"
+              />
+
+              <div className="absolute inset-0 flex flex-col items-start justify-end gap-3 p-4 pb-12 sm:p-6 sm:pb-14 lg:p-8 lg:pb-12">
+                <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium capitalize leading-none text-white backdrop-blur">
+                  {slide.categorySlug}
+                </span>
+                <div className="flex flex-col gap-1">
+                  <h2 className="m-0 line-clamp-2 pb-1 text-2xl font-[600] leading-[1.2] text-white sm:text-3xl lg:max-w-lg lg:text-3xl">
+                    {slide.title}
+                  </h2>
+                  {slide.description ? (
+                    <p className="m-0 line-clamp-1 text-sm leading-snug text-white/80 lg:max-w-md lg:text-base">
+                      {slide.description}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={"/game/" + slide.slug}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary-hover lg:h-10 lg:px-6 lg:text-sm"
+                  >
+                    <Play size={14} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />
+                    {t("game.playNow")}
+                  </Link>
+                  <BannerFavorite slug={slide.slug} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {count > 1 && (
+          <ul className="absolute inset-x-0 bottom-2 z-[2] flex items-center justify-center sm:bottom-3 lg:bottom-4">
+            {slides.map((slide, i) => {
+              const active = i === index;
+
+              return (
+                <li key={slide.slug}>
+                  <button
+                    type="button"
+                    onClick={() => setIndex(i)}
+                    aria-label={t("home.slider.goTo", { n: i + 1 })}
+                    aria-current={active ? "true" : undefined}
+                    className="flex h-7 cursor-pointer items-center justify-center px-1"
+                  >
+                    <span
+                      className={cn(
+                        "block size-1.5 rounded-full transition-colors duration-300",
+                        active ? "bg-white" : "bg-white/40",
+                      )}
+                    />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+
+===== apps/web/components/game/HomeSlider.tsx =====
+import { HeroSlider } from "@/components/game/HeroSlider";
+import { getShelf } from "@/lib/games";
+import { HOME_SLIDES, HOME_TRENDING_LIMIT } from "@/lib/home";
+
+export async function HomeSlider() {
+  const games = await getShelf("trending", HOME_TRENDING_LIMIT);
+
+  const slides = games.slice(0, HOME_SLIDES).map((game) => ({
+    slug: game.slug,
+    title: game.title,
+    categorySlug: game.categorySlug,
+    description: game.description ?? "",
+    thumbnailUrl: game.thumbnailUrl,
+  }));
+
+  if (slides.length === 0) return null;
+
+  return <HeroSlider slides={slides} />;
+}
+
+export function HomeSliderSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="aspect-[16/11] animate-pulse rounded-3xl bg-border sm:aspect-[2/1] lg:aspect-auto lg:h-[clamp(16rem,40vh,22rem)]"
+    />
+  );
+}
+
+
+===== apps/web/components/game/BannerFavorite.tsx =====
+"use client";
+
+import { Icon } from "@/components/layout/icons";
+import { t } from "@/i18n";
+import { cn } from "@/lib/cn";
+import { toggleFavorite, useFavorites } from "@/lib/favorites";
+
+// Round heart on the home banner. The banner art is always dark, so the colours do not follow the theme.
+export function BannerFavorite({ slug }: { slug: string }) {
+  const saved = useFavorites().includes(slug);
+
+  return (
+    <button
+      type="button"
+      aria-pressed={saved}
+      aria-label={t("favorites.action")}
+      title={t("favorites.action")}
+      onClick={() => toggleFavorite(slug)}
+      className={cn(
+        "flex size-9 cursor-pointer items-center justify-center rounded-full backdrop-blur transition-colors lg:size-10",
+        saved ? "bg-primary text-primary-foreground" : "bg-white/15 text-white hover:bg-white/25",
+      )}
+    >
+      <Icon name="heart" size={16} filled={saved} />
+    </button>
+  );
+}
+
+
+===== apps/web/components/game/GameCard.tsx =====
+import Image from "next/image";
+import Link from "next/link";
+import type { Game } from "@berryblue/shared";
+import { FavoriteButton } from "@/components/game/FavoriteButton";
+import { ThumbBlock } from "@/components/game/ThumbBlock";
+import { PlayIcon, ThumbIcon } from "@/components/layout/icons";
+import { t } from "@/i18n";
+
+export type GameCardData = Pick<
+  Game,
+  "slug" | "title" | "categorySlug" | "devices" | "tags" | "thumbnailUrl"
+> & {
+  description?: string | undefined;
+  playCount?: number | undefined;
+  likeCount?: number | undefined;
+};
+
+type GameCardProps = {
+  game: GameCardData;
+  priority?: boolean;
+};
+
+const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
+
+// The whole card is one link (the ::after on the title). Title and category sit on the art.
+// A mouse on desktop also sees the plays and the likes (.card-preview in globals.css).
+// The description, tags and devices are on the game page.
+export function GameCard({ game, priority = false }: GameCardProps) {
+  const hasStats = game.playCount !== undefined && game.likeCount !== undefined;
+
+  return (
+    <article className="game-card relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-2xl bg-surface">
+      <Image
+        src={game.thumbnailUrl}
+        alt=""
+        fill
+        sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 28vw, 78vw"
+        priority={priority}
+        className="card-thumb object-cover"
+      />
+      <ThumbBlock title={game.title} className="absolute inset-0 text-5xl" />
+      <FavoriteButton slug={game.slug} title={game.title} />
+      {hasStats ? (
+        <div
+          aria-hidden="true"
+          className="card-preview pointer-events-none absolute bottom-3 left-3 z-[2] md:bottom-4 md:left-4"
+        >
+          <p className="flex items-center gap-3 text-xs font-medium tabular-nums text-white">
+            <span className="flex items-center gap-1">
+              <PlayIcon size={12} />
+              {compact.format(game.playCount ?? 0)}
+            </span>
+            <span className="flex items-center gap-1">
+              <ThumbIcon size={12} />
+              {compact.format(game.likeCount ?? 0)}
+            </span>
+          </p>
+        </div>
+      ) : null}
+
+      <div className="z-[1] flex flex-col gap-1.5 bg-linear-to-t from-black/90 via-black/55 to-transparent p-3 pt-14 md:p-4 md:pt-16">
+        <div className="card-info flex flex-col gap-1.5">
+          <h3 className="line-clamp-2 text-sm font-medium leading-snug text-white md:text-base">
+            <Link
+              href={"/game/" + game.slug}
+              aria-label={t("card.playAria", { title: game.title })}
+              className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-brand"
+            >
+              {game.title}
+            </Link>
+          </h3>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium capitalize leading-none text-white">
+              {game.categorySlug}
+            </span>
+            {hasStats ? (
+              <span className="flex items-center gap-1 text-xs font-medium tabular-nums text-white sm:hidden">
+                <PlayIcon size={12} />
+                {compact.format(game.playCount ?? 0)}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export function GameCardSkeleton() {
+  return <div aria-hidden="true" className="aspect-[4/5] animate-pulse rounded-2xl bg-border" />;
+}
+
+
+===== apps/web/lib/games.ts =====
+import { cacheLife } from "next/cache";
+import {
+  categorySchema,
+  gameSchema,
+  type Category,
+  type Game as BaseGame,
+} from "@berryblue/shared";
+import { PAGE_SIZE, type GamesFilters, type SortName } from "@/lib/games-query";
+import { createPublicClient } from "@/lib/supabase/public";
+
+export type ShelfName = SortName;
+
+// A game plus the counters the cards show on hover.
+export type Game = BaseGame & { playCount: number; likeCount: number; dislikeCount: number };
+
+const SORT_COLUMN = {
+  trending: "trending_score",
+  new: "created_at",
+  popular: "play_count",
+} as const;
+
+const GAME_COLUMNS =
+  "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, play_count, like_count, dislike_count, categories(slug)";
+
+// "!inner" means: only games whose category matches the filter.
+const GAME_COLUMNS_INNER =
+  "id, slug, title, description, thumbnail_url, embed_url, tags, devices, provider, created_at, play_count, like_count, dislike_count, categories!inner(slug)";
+
+const SLUG_PATTERN = /^[a-z0-9-]+$/;
+
+// Abhi pagination nahi: ek category ya tag par itne games dikhte hain.
+export const LISTING_LIMIT = 48;
+
+// Database ki row (snake_case) ko Game (camelCase) mein badalta hai aur Zod se check karta hai.
+function parseRow(row: unknown) {
+  const base = parseBase(row);
+  if (!base.success) return base;
+
+  const r = row as Record<string, unknown>;
+  return {
+    success: true as const,
+    data: {
+      ...base.data,
+      playCount: Number(r.play_count) || 0,
+      likeCount: Number(r.like_count) || 0,
+      dislikeCount: Number(r.dislike_count) || 0,
+    },
+  };
+}
+
+function parseBase(row: unknown) {
+  const r = row as Record<string, unknown>;
+  const category = r.categories as { slug?: string } | null;
+
+  return gameSchema.safeParse({
+    id: r.id,
+    slug: r.slug,
+    title: r.title,
+    description: r.description,
+    thumbnailUrl: r.thumbnail_url,
+    embedUrl: r.embed_url,
+    categorySlug: category?.slug,
+    tags: r.tags,
+    devices: r.devices,
+    provider: r.provider,
+    createdAt: r.created_at,
+  });
+}
+
+function parseRows(rows: unknown[] | null): Game[] {
+  const games: Game[] = [];
+
+  for (const row of rows ?? []) {
+    const result = parseRow(row);
+    if (result.success) {
+      games.push(result.data);
+    } else {
+      console.error("Skipping invalid game row:", result.error.issues);
+    }
+  }
+
+  return games;
+}
+
+// Rule: "use cache" wale functions error par THROW karte hain (cache mein sirf kamyab jawab
+// jaate hain). Bahar ka wrapper error pakad kar pehle jaisa khali jawab lautata hai.
+
+// ---------- Shelves (homepage) ----------
+
+async function loadShelf(shelf: ShelfName, limit: number): Promise<Game[]> {
+  "use cache";
+  cacheLife("minutes");
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("games")
+    .select(GAME_COLUMNS)
+    .eq("is_published", true)
+    .order(SORT_COLUMN[shelf], { ascending: false })
+    .order("id")
+    .limit(limit);
+
+  if (error) throw new Error(`getShelf(${shelf}) failed: ${error.message}`);
+
+  return parseRows(data);
+}
+
+export async function getShelf(shelf: ShelfName, limit = 8): Promise<Game[]> {
+  try {
+    return await loadShelf(shelf, limit);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+// ---------- All games (sort + filters + pagination) ----------
+
+export type GamesPage = {
+  games: Game[];
+  total: number;
+  page: number;
+  pageCount: number;
+};
+
+// Filters come in as plain strings (null = no filter) so the cache key stays simple.
+async function loadGamesPage(
+  sort: SortName,
+  page: number,
+  pageSize: number,
+  category: string | null,
+  device: string | null,
+  tag: string | null,
+): Promise<GamesPage> {
+  "use cache";
+  cacheLife("minutes");
+
+  const supabase = createPublicClient();
+
+  // "!inner" is always used, so the count and the list agree on which games exist.
+  // The category filter itself is added only when one is chosen.
+  let countQuery = supabase
+    .from("games")
+    .select("id, categories!inner(slug)", { count: "exact", head: true })
+    .eq("is_published", true);
+
+  let listQuery = supabase.from("games").select(GAME_COLUMNS_INNER).eq("is_published", true);
+
+  if (category) {
+    countQuery = countQuery.eq("categories.slug", category);
+    listQuery = listQuery.eq("categories.slug", category);
+  }
+  if (device) {
+    countQuery = countQuery.contains("devices", [device]);
+    listQuery = listQuery.contains("devices", [device]);
+  }
+  if (tag) {
+    countQuery = countQuery.contains("tags", [tag]);
+    listQuery = listQuery.contains("tags", [tag]);
+  }
+
+  const { count, error: countError } = await countQuery;
+
+  if (countError || count === null) {
+    throw new Error(`getGamesPage count failed: ${countError?.message ?? "no count"}`);
+  }
+
+  const pageCount = Math.max(1, Math.ceil(count / pageSize));
+  if (page > pageCount) return { games: [], total: count, page, pageCount };
+
+  const from = (page - 1) * pageSize;
+
+  const { data, error } = await listQuery
+    .order(SORT_COLUMN[sort], { ascending: false })
+    .order("id")
+    .range(from, from + pageSize - 1);
+
+  if (error) throw new Error(`getGamesPage failed: ${error.message}`);
+
+  return { games: parseRows(data), total: count, page, pageCount };
+}
+
+// null = the database could not be reached.
+export async function getGamesPage(
+  sort: SortName,
+  page: number,
+  filters: GamesFilters = {},
+  pageSize = PAGE_SIZE,
+): Promise<GamesPage | null> {
+  try {
+    return await loadGamesPage(
+      sort,
+      page,
+      pageSize,
+      filters.category ?? null,
+      filters.device ?? null,
+      filters.tag ?? null,
+    );
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+// ---------- One game ----------
+
+// null = nahi mila. Database error par throw (error page), taake masla cache na ho.
+export async function getGameBySlug(slug: string): Promise<Game | null> {
+  "use cache";
+  cacheLife("minutes");
+
+  // URL se aane wali value par bharosa nahi: ghalat slug par database tak jaana hi nahi.
+  if (!SLUG_PATTERN.test(slug)) return null;
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("games")
+    .select(GAME_COLUMNS)
+    .eq("is_published", true)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) throw new Error(`getGameBySlug(${slug}) failed: ${error.message}`);
+  if (!data) return null;
+
+  const result = parseRow(data);
+  if (!result.success) {
+    console.error(`Invalid game row for ${slug}:`, result.error.issues);
+    return null;
+  }
+
+  return result.data;
+}
+
+// ---------- Related games ----------
+
+// Candidates: same category, plus games that share a tag.
+// Score: 2 for the same category, 1 for each shared tag. Ties go to the most played.
+async function loadRelatedGames(
+  categorySlug: string,
+  excludeSlug: string,
+  tags: string[],
+  limit: number,
+): Promise<Game[]> {
+  "use cache";
+  cacheLife("minutes");
+
+  const supabase = createPublicClient();
+
+  const sameCategory = await supabase
+    .from("games")
+    .select(GAME_COLUMNS_INNER)
+    .eq("is_published", true)
+    .eq("categories.slug", categorySlug)
+    .neq("slug", excludeSlug)
+    .order("play_count", { ascending: false })
+    .order("id")
+    .limit(48);
+
+  if (sameCategory.error) {
+    throw new Error(`getRelatedGames category failed: ${sameCategory.error.message}`);
+  }
+
+  const candidates = parseRows(sameCategory.data);
+
+  if (tags.length > 0) {
+    const sharedTags = await supabase
+      .from("games")
+      .select(GAME_COLUMNS)
+      .eq("is_published", true)
+      .overlaps("tags", tags)
+      .neq("slug", excludeSlug)
+      .order("play_count", { ascending: false })
+      .order("id")
+      .limit(48);
+
+    if (sharedTags.error) {
+      throw new Error(`getRelatedGames tags failed: ${sharedTags.error.message}`);
+    }
+
+    candidates.push(...parseRows(sharedTags.data));
+  }
+
+  const unique = [...new Map(candidates.map((game) => [game.id, game])).values()];
+
+  const score = (game: Game) =>
+    (game.categorySlug === categorySlug ? 2 : 0) +
+    game.tags.filter((tag) => tags.includes(tag)).length;
+
+  // sort() is stable, so equal scores keep the play_count order.
+  return unique.sort((a, b) => score(b) - score(a)).slice(0, limit);
+}
+
+export async function getRelatedGames(game: Game, limit = 4): Promise<Game[]> {
+  try {
+    return await loadRelatedGames(game.categorySlug, game.slug, game.tags, limit);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+// ---------- Categories ----------
+
+async function loadCategories(): Promise<Category[]> {
+  "use cache";
+  cacheLife("hours");
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase.from("categories").select("id, slug, name").order("name");
+
+  if (error) throw new Error(`getCategories failed: ${error.message}`);
+
+  const categories: Category[] = [];
+  for (const row of data ?? []) {
+    const result = categorySchema.safeParse(row);
+    if (result.success) {
+      categories.push(result.data);
+    } else {
+      console.error("Skipping invalid category row:", result.error.issues);
+    }
+  }
+
+  return categories;
+}
+
+export async function getCategories(): Promise<Category[]> {
+  try {
+    return await loadCategories();
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+export async function getCategoryBySlug(slug: string): Promise<Category | null> {
+  "use cache";
+  cacheLife("hours");
+
+  if (!SLUG_PATTERN.test(slug)) return null;
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id, slug, name")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) throw new Error(`getCategoryBySlug(${slug}) failed: ${error.message}`);
+  if (!data) return null;
+
+  const result = categorySchema.safeParse(data);
+  return result.success ? result.data : null;
+}
+
+// ---------- Category and tag listings ----------
+
+async function loadCategoryGames(categorySlug: string, limit: number): Promise<Game[]> {
+  "use cache";
+  cacheLife("minutes");
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("games")
+    .select(GAME_COLUMNS_INNER)
+    .eq("is_published", true)
+    .eq("categories.slug", categorySlug)
+    .order("play_count", { ascending: false })
+    .order("id")
+    .limit(limit);
+
+  if (error) throw new Error(`getCategoryGames(${categorySlug}) failed: ${error.message}`);
+
+  return parseRows(data);
+}
+
+export async function getCategoryGames(
+  categorySlug: string,
+  limit = LISTING_LIMIT,
+): Promise<Game[]> {
+  // Ghalat slug par cache entry bhi nahi banti.
+  if (!SLUG_PATTERN.test(categorySlug)) return [];
+
+  try {
+    return await loadCategoryGames(categorySlug, limit);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+async function loadTagGames(tag: string, limit: number): Promise<Game[]> {
+  "use cache";
+  cacheLife("minutes");
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("games")
+    .select(GAME_COLUMNS)
+    .eq("is_published", true)
+    .contains("tags", [tag])
+    .order("play_count", { ascending: false })
+    .order("id")
+    .limit(limit);
+
+  if (error) throw new Error(`getTagGames(${tag}) failed: ${error.message}`);
+
+  return parseRows(data);
+}
+
+export async function getTagGames(tag: string, limit = LISTING_LIMIT): Promise<Game[]> {
+  if (!SLUG_PATTERN.test(tag)) return [];
+
+  try {
+    return await loadTagGames(tag, limit);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+// ---------- Search ----------
+
+// % _ and \ mean something special inside ilike, so they are escaped.
+function escapeLike(value: string) {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+// Not cached on purpose: visitors can type anything, so the cache would never stop growing.
+// Call it inside Suspense. null = the database could not be reached.
+export async function searchGames(query: string, limit = LISTING_LIMIT): Promise<Game[] | null> {
+  const q = query.trim().toLowerCase();
+  if (q.length === 0) return [];
+
+  try {
+    const supabase = createPublicClient();
+
+    const byTitle = await supabase
+      .from("games")
+      .select(GAME_COLUMNS)
+      .eq("is_published", true)
+      .ilike("title", `%${escapeLike(q)}%`)
+      .order("play_count", { ascending: false })
+      .order("id")
+      .limit(limit);
+
+    if (byTitle.error) throw new Error(`searchGames title failed: ${byTitle.error.message}`);
+
+    const found = parseRows(byTitle.data);
+
+    // Tags are lowercase with dashes ("word-puzzle"), so "word puzzle" is tried as that tag.
+    const tag = q.replace(/\s+/g, "-");
+    if (SLUG_PATTERN.test(tag)) {
+      const byTag = await supabase
+        .from("games")
+        .select(GAME_COLUMNS)
+        .eq("is_published", true)
+        .contains("tags", [tag])
+        .order("play_count", { ascending: false })
+        .order("id")
+        .limit(limit);
+
+      if (byTag.error) throw new Error(`searchGames tag failed: ${byTag.error.message}`);
+      found.push(...parseRows(byTag.data));
+    }
+
+    const unique = [...new Map(found.map((game) => [game.id, game])).values()];
+
+    // 0 = title starts with the search, 1 = title contains it, 2 = tag match only.
+    // sort() is stable, so equal ranks keep the play_count order.
+    const rank = (game: Game) => {
+      const title = game.title.toLowerCase();
+      return title.startsWith(q) ? 0 : title.includes(q) ? 1 : 2;
+    };
+
+    return unique.sort((a, b) => rank(a) - rank(b)).slice(0, limit);
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+// ---------- Games by slug (favorites, recently played) ----------
+
+// Returns the games in the order of the slugs. Unknown or unpublished slugs are dropped.
+// Not cached: every visitor has a different list. null = the database could not be reached.
+export async function getGamesBySlugs(slugs: string[]): Promise<Game[] | null> {
+  const unique = [...new Set(slugs)].slice(0, 50);
+  if (unique.length === 0) return [];
+
+  try {
+    const { data, error } = await createPublicClient()
+      .from("games")
+      .select(GAME_COLUMNS)
+      .eq("is_published", true)
+      .in("slug", unique);
+
+    if (error) throw new Error(`getGamesBySlugs failed: ${error.message}`);
+
+    const bySlug = new Map(parseRows(data).map((game) => [game.slug, game]));
+    return unique.flatMap((slug) => {
+      const game = bySlug.get(slug);
+      return game ? [game] : [];
+    });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+
+===== apps/web/lib/games-query.ts =====
+import { deviceSchema, type Device } from "@berryblue/shared";
+import { z } from "zod";
+
+export const SORTS = ["trending", "new", "popular"] as const;
+export type SortName = (typeof SORTS)[number];
+
+export const DEVICES = deviceSchema.options;
+
+export const PAGE_SIZE = 12;
+
+export type GamesFilters = {
+  category?: string | undefined;
+  device?: Device | undefined;
+  tag?: string | undefined;
+};
+
+// The URL is not trusted: a wrong value becomes the default (or no filter).
+const slugParam = z
+  .string()
+  .regex(/^[a-z0-9-]+$/)
+  .max(60)
+  .optional()
+  .catch(undefined);
+
+const querySchema = z.object({
+  sort: z.enum(SORTS).catch("popular"),
+  page: z.coerce.number().int().min(1).catch(1),
+  category: slugParam,
+  tag: slugParam,
+  device: deviceSchema.optional().catch(undefined),
+});
+
+export function parseGamesQuery(params: Record<string, string | string[] | undefined>) {
+  return querySchema.parse({
+    sort: params.sort,
+    page: params.page,
+    category: params.category,
+    tag: params.tag,
+    device: params.device,
+  });
+}
+
+// Every link on /games is built here, so sort, filters and page always travel together.
+export function gamesHref(state: GamesFilters & { sort: SortName; page?: number }) {
+  const params = new URLSearchParams();
+  params.set("sort", state.sort);
+  if (state.category) params.set("category", state.category);
+  if (state.device) params.set("device", state.device);
+  if (state.tag) params.set("tag", state.tag);
+  if (state.page && state.page > 1) params.set("page", String(state.page));
+  return "/games?" + params.toString();
+}
+
+
+===== packages/shared/src/game.ts =====
+import { z } from "zod";
+
+export const deviceSchema = z.enum(["mobile", "tablet", "desktop"]);
+
+export const providerSchema = z
+  .string()
+  .regex(/^[a-z0-9-]+$/, "lowercase letters, numbers and dashes only")
+  .min(2)
+  .max(40);
+
+// Poora URL (https://...) ya apni site ka raasta (/thumbs/x.svg).
+export const urlOrPathSchema = z.union([
+  z.url(),
+  z.string().regex(/^\/\S*$/, "must be a URL or a path starting with /"),
+]);
+
+export const gameSchema = z.object({
+  id: z.uuid(),
+  slug: z.string().regex(/^[a-z0-9-]+$/, "lowercase letters, numbers and dashes only"),
+  title: z.string().min(1).max(100),
+  description: z.string().max(2000).default(""),
+  thumbnailUrl: urlOrPathSchema,
+  embedUrl: urlOrPathSchema,
+  categorySlug: z.string().min(1),
+  tags: z.array(z.string()).default([]),
+  devices: z.array(deviceSchema).min(1),
+  provider: providerSchema,
+  // Postgres "+00:00" jaisa offset bhejta hai, sirf "Z" nahi.
+  createdAt: z.iso.datetime({ offset: true }),
+});
+
+export type Game = z.infer<typeof gameSchema>;
+export type Device = z.infer<typeof deviceSchema>;
+export type Provider = z.infer<typeof providerSchema>;
+
+
+===== apps/admin/src/lib/games-actions.ts =====
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { requireAdmin } from "@/lib/auth";
+import { createSecretClient } from "@/lib/supabase/secret";
+
+const schema = z.object({
+  gameId: z.uuid(),
+  published: z.enum(["true", "false"]),
+});
+
+export async function setPublished(formData: FormData) {
+  // First line of every Server Action.
+  const admin = await requireAdmin();
+
+  const parsed = schema.safeParse({
+    gameId: formData.get("gameId"),
+    published: formData.get("published"),
+  });
+  if (!parsed.success) throw new Error("Invalid request.");
+
+  const { error } = await createSecretClient().rpc("set_game_published", {
+    p_game_id: parsed.data.gameId,
+    p_published: parsed.data.published === "true",
+    p_admin_id: admin.id,
+  });
+
+  // Refresh in every case so a stale list corrects itself.
+  revalidatePath("/games");
+  revalidatePath("/overview");
+
+  if (error) {
+    console.error("set_game_published failed:", error.message);
+    throw new Error("Could not update the game.");
+  }
+}
+
+
+===== apps/worker/src/process-thumbnails.ts =====
+import { createHash } from "node:crypto";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import sharp from "sharp";
+import { createSecretClient } from "./supabase";
+
+const BUCKET = "thumbnails";
+const WIDTH = 400;
+const HEIGHT = 300;
+const PAGE_SIZE = 1000;
+const CONCURRENCY = 3;
+const TIMEOUT_MS = 10_000;
+const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_REDIRECTS = 3;
+// After this many failed attempts for the same source URL the job stops trying.
+const MAX_FAILURES = 3;
+const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]);
+
+type ThumbnailRecord = {
+  source_url: string;
+  webp_url: string | null;
+  avif_url: string | null;
+  failure_count: number;
+};
+
+type GameRow = {
+  id: string;
+  slug: string;
+  thumbnail_url: string;
+  game_thumbnails: ThumbnailRecord | ThumbnailRecord[] | null;
+};
+
+type Outcome = "processed" | "reapplied" | "skipped";
+
+// --- Safe download -------------------------------------------------------------------------
+
+function isPrivateAddress(address: string): boolean {
+  if (isIP(address) === 4) {
+    const [a = 0, b = 0] = address.split(".").map(Number);
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      a >= 224
+    );
+  }
+
+  const v6 = address.toLowerCase();
+  if (v6 === "::" || v6 === "::1") return true;
+  if (v6.startsWith("::ffff:")) {
+    const rest = v6.slice(7);
+    return isIP(rest) === 4 ? isPrivateAddress(rest) : true;
+  }
+  return /^(fc|fd|fe[89ab])/.test(v6);
+}
+
+// Only public https addresses. Checked again for every redirect.
+async function assertPublicUrl(url: URL) {
+  if (url.protocol !== "https:") throw new Error("only https thumbnails are allowed");
+
+  const host = url.hostname.replace(/^\[|\]$/g, "");
+  const addresses = isIP(host) ? [{ address: host }] : await lookup(host, { all: true });
+
+  if (addresses.length === 0 || addresses.some((a) => isPrivateAddress(a.address))) {
+    throw new Error("the address is not a public one");
+  }
+}
+
+async function readLimited(response: Response): Promise<Buffer> {
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("empty response");
+
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    total += value.byteLength;
+    if (total > MAX_BYTES) {
+      await reader.cancel();
+      throw new Error("image is larger than 5 MB");
+    }
+    chunks.push(value);
+  }
+
+  return Buffer.concat(chunks);
+}
+
+async function downloadImage(source: string): Promise<Buffer> {
+  const deadline = AbortSignal.timeout(TIMEOUT_MS);
+  let url = new URL(source);
+
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+    await assertPublicUrl(url);
+
+    const response = await fetch(url, {
+      redirect: "manual",
+      signal: deadline,
+      headers: { "user-agent": "BerryBlueThumbnails/1.0", accept: "image/*" },
+    });
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      await response.body?.cancel();
+      if (!location) throw new Error("redirect without a location");
+      url = new URL(location, url);
+      continue;
+    }
+
+    if (!response.ok) {
+      await response.body?.cancel();
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const type = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
+    if (!ALLOWED_TYPES.has(type)) {
+      await response.body?.cancel();
+      throw new Error(`not an allowed image type (${type || "none"})`);
+    }
+
+    if (Number(response.headers.get("content-length") ?? 0) > MAX_BYTES) {
+      await response.body?.cancel();
+      throw new Error("image is larger than 5 MB");
+    }
+
+    return readLimited(response);
+  }
+
+  throw new Error("too many redirects");
+}
+
+// --- Storage -------------------------------------------------------------------------------
+
+async function convert(input: Buffer) {
+  const base = sharp(input, { limitInputPixels: 50_000_000 })
+    .rotate()
+    .resize(WIDTH, HEIGHT, { fit: "cover" });
+
+  const [webp, avif] = await Promise.all([
+    base.clone().webp({ quality: 80 }).toBuffer(),
+    base.clone().avif({ quality: 50 }).toBuffer(),
+  ]);
+
+  return { webp, avif };
+}
+
+async function upload(supabase: SupabaseClient, path: string, body: Buffer, contentType: string) {
+  const { error } = await supabase.storage.from(BUCKET).upload(path, body, {
+    contentType,
+    // The file name contains a hash of the source image, so a file never changes.
+    cacheControl: "31536000",
+    upsert: true,
+  });
+  if (error) throw new Error(`upload failed: ${error.message}`);
+
+  return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+// Best effort: delete older files of this game. A failure here is only a warning.
+async function removeOldFiles(supabase: SupabaseClient, gameId: string, keep: string[]) {
+  const folder = `games/${gameId}`;
+  const { data, error } = await supabase.storage.from(BUCKET).list(folder);
+  if (error || !data) return;
+
+  const stale = data.map((file) => `${folder}/${file.name}`).filter((path) => !keep.includes(path));
+  if (stale.length === 0) return;
+
+  const { error: removeError } = await supabase.storage.from(BUCKET).remove(stale);
+  if (removeError) console.warn(`Could not remove old files of ${gameId}: ${removeError.message}`);
+}
+
+// --- Job -----------------------------------------------------------------------------------
+
+function recordOf(game: GameRow): ThumbnailRecord | null {
+  return Array.isArray(game.game_thumbnails)
+    ? (game.game_thumbnails[0] ?? null)
+    : game.game_thumbnails;
+}
+
+async function listCandidates(supabase: SupabaseClient, ownPrefix: string): Promise<GameRow[]> {
+  const games: GameRow[] = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("games")
+      .select(
+        "id, slug, thumbnail_url, game_thumbnails(source_url, webp_url, avif_url, failure_count)",
+      )
+      .like("thumbnail_url", "http%")
+      .order("id")
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw new Error(`listCandidates failed: ${error.message}`);
+    games.push(...(data as unknown as GameRow[]));
+    if (data.length < PAGE_SIZE) break;
+  }
+
+  return games.filter((game) => !game.thumbnail_url.startsWith(ownPrefix));
+}
+
+async function record(
+  supabase: SupabaseClient,
+  game: GameRow,
+  webpUrl: string | null,
+  avifUrl: string | null,
+  error: string | null,
+) {
+  const { error: rpcError } = await supabase.rpc("record_thumbnail", {
+    p_game_id: game.id,
+    p_source_url: game.thumbnail_url,
+    p_webp_url: webpUrl,
+    p_avif_url: avifUrl,
+    p_error: error,
+  });
+  if (rpcError) throw new Error(`record_thumbnail failed: ${rpcError.message}`);
+}
+
+async function handle(supabase: SupabaseClient, game: GameRow): Promise<Outcome> {
+  const existing = recordOf(game);
+  const sameSource = existing?.source_url === game.thumbnail_url;
+
+  // Already processed earlier, but an approval put the provider's URL back: reuse the stored files.
+  if (sameSource && existing?.webp_url && existing.avif_url) {
+    await record(supabase, game, existing.webp_url, existing.avif_url, null);
+    return "reapplied";
+  }
+
+  if (sameSource && existing && existing.failure_count >= MAX_FAILURES) return "skipped";
+
+  const input = await downloadImage(game.thumbnail_url);
+  const { webp, avif } = await convert(input);
+
+  const hash = createHash("sha256").update(input).digest("hex").slice(0, 12);
+  const webpPath = `games/${game.id}/${hash}-${WIDTH}x${HEIGHT}.webp`;
+  const avifPath = `games/${game.id}/${hash}-${WIDTH}x${HEIGHT}.avif`;
+
+  const webpUrl = await upload(supabase, webpPath, webp, "image/webp");
+  const avifUrl = await upload(supabase, avifPath, avif, "image/avif");
+
+  await record(supabase, game, webpUrl, avifUrl, null);
+  await removeOldFiles(supabase, game.id, [webpPath, avifPath]);
+  return "processed";
+}
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function main() {
+  const supabase = createSecretClient();
+
+  // Public URL prefix of our own files: games that already use it do not need work.
+  const ownPrefix = supabase.storage.from(BUCKET).getPublicUrl("x").data.publicUrl.slice(0, -1);
+  const games = await listCandidates(supabase, ownPrefix);
+
+  if (games.length === 0) {
+    console.log("No thumbnails to process.");
+    return;
+  }
+
+  const counts: Record<Outcome | "failed", number> = {
+    processed: 0,
+    reapplied: 0,
+    skipped: 0,
+    failed: 0,
+  };
+  const failures: { slug: string; error: string }[] = [];
+  let recordErrors = 0;
+  let next = 0;
+
+  async function runner() {
+    while (true) {
+      const game = games[next];
+      next += 1;
+      if (!game) return;
+
+      try {
+        counts[await handle(supabase, game)] += 1;
+      } catch (error) {
+        const message = describeError(error);
+        counts.failed += 1;
+        failures.push({ slug: game.slug, error: message });
+
+        try {
+          await record(supabase, game, null, null, message);
+        } catch (recordError) {
+          recordErrors += 1;
+          console.error(describeError(recordError));
+        }
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, games.length) }, runner));
+
+  console.log("Thumbnail job finished");
+  console.table({ candidates: games.length, ...counts });
+
+  if (failures.length > 0) {
+    console.log("Failed:");
+    console.table(failures);
+  }
+
+  // A failed download is normal data. Only exit with 1 if the results could not be saved.
+  if (recordErrors > 0) process.exitCode = 1;
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+
+
+===== supabase/migrations/20261122000000_add_game_stats.sql =====
+-- BerryBlue: play counts and trending score for Popular / Trending shelves
+
+alter table public.games
+  add column play_count integer not null default 0 check (play_count >= 0),
+  add column trending_score integer not null default 0 check (trending_score >= 0);
+
+create index games_play_count_idx on public.games (play_count desc);
+create index games_trending_score_idx on public.games (trending_score desc);
+
+===== supabase/migrations/20261122000001_grant_privileges.sql =====
+-- Table privileges (RLS decides which rows each role can see or change).
+grant usage on schema public to anon, authenticated;
+
+-- Public catalogue: read only.
+grant select on public.categories to anon, authenticated;
+grant select on public.games to anon, authenticated;
+
+-- Profiles: everyone can read, signed-in users can write (RLS limits it to their own row).
+grant select on public.profiles to anon, authenticated;
+grant insert, update on public.profiles to authenticated;
+
+-- Server-side admin (secret key) needs full access later.
+grant all on public.categories, public.games, public.profiles to service_role;
+
+===== supabase/migrations/20261123000000_provider_pipeline.sql =====
+-- Phase 3A: provider import pipeline (staging tables, admin list, games ke naye columns).
+
+alter table public.games
+  add column provider_game_id text,
+  add column content_hash text,
+  add column updated_at timestamptz not null default now();
+
+update public.games set provider_game_id = slug where provider_game_id is null;
+
+alter table public.games alter column provider_game_id set not null;
+
+alter table public.games
+  add constraint games_provider_game_unique unique (provider, provider_game_id);
+
+alter table public.games alter column is_published set default false;
+
+create function public.games_default_provider_game_id()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.provider_game_id := coalesce(new.provider_game_id, new.slug);
+  return new;
+end;
+$$;
+
+create trigger games_default_provider_game_id
+  before insert on public.games
+  for each row execute function public.games_default_provider_game_id();
+
+create function public.set_updated_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+create trigger games_set_updated_at
+  before update on public.games
+  for each row execute function public.set_updated_at();
+
+create table public.import_batches (
+  id uuid primary key default gen_random_uuid(),
+  provider text not null,
+  status text not null default 'running'
+    check (status in ('running', 'completed', 'failed')),
+  started_at timestamptz not null default now(),
+  finished_at timestamptz,
+  total_count integer not null default 0,
+  new_count integer not null default 0,
+  changed_count integer not null default 0,
+  unchanged_count integer not null default 0,
+  invalid_count integer not null default 0,
+  error text
+);
+
+create table public.staged_games (
+  id uuid primary key default gen_random_uuid(),
+  batch_id uuid not null references public.import_batches (id) on delete cascade,
+  provider text not null,
+  provider_game_id text not null,
+  raw jsonb not null,
+  slug text,
+  title text,
+  description text,
+  thumbnail_url text,
+  embed_url text,
+  provider_category text,
+  category_id uuid references public.categories (id),
+  tags text[] not null default '{}',
+  devices text[] not null default '{}',
+  content_hash text not null,
+  status text not null default 'pending'
+    check (status in ('pending', 'approved', 'rejected', 'invalid')),
+  validation_errors jsonb,
+  reviewed_by uuid references auth.users (id) on delete set null,
+  reviewed_at timestamptz,
+  created_at timestamptz not null default now(),
+  constraint staged_games_unique unique (provider, provider_game_id, content_hash)
+);
+
+create index staged_games_status_idx on public.staged_games (status);
+create index staged_games_batch_idx on public.staged_games (batch_id);
+
+create table public.admin_users (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+alter table public.import_batches enable row level security;
+alter table public.staged_games enable row level security;
+alter table public.admin_users enable row level security;
+
+revoke all on public.import_batches, public.staged_games, public.admin_users
+  from anon, authenticated;
+
+grant all on public.import_batches, public.staged_games, public.admin_users
+  to service_role;
+
+===== supabase/migrations/20261124000000_admin_review.sql =====
+-- Phase 3B: audit log aur admin review functions (approve / reject).
+
+create table public.audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  admin_id uuid references auth.users (id) on delete set null,
+  action text not null,
+  entity_type text not null,
+  entity_id uuid,
+  details jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index audit_logs_created_idx on public.audit_logs (created_at desc);
+
+alter table public.audit_logs enable row level security;
+revoke all on public.audit_logs from anon, authenticated;
+grant all on public.audit_logs to service_role;
+
+-- Approve = game live (insert ya update), staged row "approved", audit log: sab ek transaction mein.
+create function public.approve_staged_game(
+  p_staged_id uuid,
+  p_category_id uuid,
+  p_admin_id uuid,
+  p_slug text default null
+)
+returns uuid
+language plpgsql
+set search_path = ''
+as $$
+declare
+  s public.staged_games%rowtype;
+  v_slug text;
+  v_game_id uuid;
+begin
+  select * into s from public.staged_games where id = p_staged_id for update;
+
+  if not found then
+    raise exception 'staged game not found';
+  end if;
+  if s.status <> 'pending' then
+    raise exception 'only pending games can be approved (current status: %)', s.status;
+  end if;
+  if not exists (select 1 from public.categories where id = p_category_id) then
+    raise exception 'category not found';
+  end if;
+
+  v_slug := coalesce(nullif(btrim(p_slug), ''), s.slug);
+  if v_slug is null or v_slug !~ '^[a-z0-9-]+$' then
+    raise exception 'invalid slug';
+  end if;
+
+  -- Takraav: yeh slug kisi AUR game ka hai (wohi provider + wohi id ho to woh update hai, takraav nahi).
+  if exists (
+    select 1 from public.games g
+    where g.slug = v_slug
+      and not (g.provider = s.provider and g.provider_game_id = s.provider_game_id)
+  ) then
+    raise exception 'slug "%" is already used by another game', v_slug;
+  end if;
+
+  insert into public.games (
+    slug, title, description, thumbnail_url, embed_url, category_id,
+    tags, devices, provider, provider_game_id, content_hash, is_published
+  )
+  values (
+    v_slug, s.title, s.description, s.thumbnail_url, s.embed_url, p_category_id,
+    s.tags, s.devices, s.provider, s.provider_game_id, s.content_hash, true
+  )
+  on conflict (provider, provider_game_id) do update set
+    slug = excluded.slug,
+    title = excluded.title,
+    description = excluded.description,
+    thumbnail_url = excluded.thumbnail_url,
+    embed_url = excluded.embed_url,
+    category_id = excluded.category_id,
+    tags = excluded.tags,
+    devices = excluded.devices,
+    content_hash = excluded.content_hash,
+    is_published = true
+  returning id into v_game_id;
+
+  update public.staged_games
+  set status = 'approved',
+      slug = v_slug,
+      category_id = p_category_id,
+      reviewed_by = p_admin_id,
+      reviewed_at = now()
+  where id = p_staged_id;
+
+  insert into public.audit_logs (admin_id, action, entity_type, entity_id, details)
+  values (
+    p_admin_id, 'game.approve', 'game', v_game_id,
+    jsonb_build_object('staged_id', p_staged_id, 'slug', v_slug, 'provider', s.provider)
+  );
+
+  return v_game_id;
+end;
+$$;
+
+create function public.reject_staged_game(
+  p_staged_id uuid,
+  p_admin_id uuid,
+  p_reason text default null
+)
+returns void
+language plpgsql
+set search_path = ''
+as $$
+begin
+  update public.staged_games
+  set status = 'rejected', reviewed_by = p_admin_id, reviewed_at = now()
+  where id = p_staged_id and status = 'pending';
+
+  if not found then
+    raise exception 'only pending games can be rejected';
+  end if;
+
+  insert into public.audit_logs (admin_id, action, entity_type, entity_id, details)
+  values (
+    p_admin_id, 'game.reject', 'staged_game', p_staged_id,
+    jsonb_build_object('reason', p_reason)
+  );
+end;
+$$;
+
+-- Sirf server (secret key) in functions ko chala sakta hai. Supabase naye functions anon/authenticated ko
+-- bhi de deta hai, is liye teeno se explicitly wapas liya.
+revoke execute on function public.approve_staged_game(uuid, uuid, uuid, text) from public, anon, authenticated;
+revoke execute on function public.reject_staged_game(uuid, uuid, text) from public, anon, authenticated;
+grant execute on function public.approve_staged_game(uuid, uuid, uuid, text) to service_role;
+grant execute on function public.reject_staged_game(uuid, uuid, text) to service_role;
+
+===== supabase/migrations/20261124010000_set_game_published.sql =====
+-- Phase 3B: publish / unpublish a live game, with an audit log entry, in one transaction.
+create function public.set_game_published(
+  p_game_id uuid,
+  p_published boolean,
+  p_admin_id uuid
+)
+returns void
+language plpgsql
+set search_path = ''
+as $$
+begin
+  update public.games
+  set is_published = p_published
+  where id = p_game_id and is_published is distinct from p_published;
+
+  if not found then
+    raise exception 'game not found, or it is already in that state';
+  end if;
+
+  insert into public.audit_logs (admin_id, action, entity_type, entity_id, details)
+  values (
+    p_admin_id,
+    case when p_published then 'game.publish' else 'game.unpublish' end,
+    'game',
+    p_game_id,
+    '{}'::jsonb
+  );
+end;
+$$;
+
+revoke execute on function public.set_game_published(uuid, boolean, uuid) from public, anon, authenticated;
+grant execute on function public.set_game_published(uuid, boolean, uuid) to service_role;
+
+notify pgrst, 'reload schema';
+
+===== supabase/migrations/20261125060000_thumbnails.sql =====
+-- Phase 3D-1: processed thumbnails (WebP + AVIF) in Supabase Storage.
+
+-- Public bucket: anyone can read, only the secret key can write.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('thumbnails', 'thumbnails', true, 1048576, array['image/webp', 'image/avif'])
+on conflict (id) do nothing;
+
+create table public.game_thumbnails (
+  game_id uuid primary key references public.games (id) on delete cascade,
+  source_url text not null,
+  webp_url text,
+  avif_url text,
+  last_error text,
+  last_attempt_at timestamptz not null default now(),
+  failure_count integer not null default 0 check (failure_count >= 0)
+);
+
+alter table public.game_thumbnails enable row level security;
+revoke all on public.game_thumbnails from anon, authenticated;
+grant all on public.game_thumbnails to service_role;
+
+-- One result in, in a single transaction. On success the game's thumbnail_url becomes the WebP url,
+-- but only if it still equals the source url (so a newer approval is never overwritten).
+-- Returns true if games.thumbnail_url was changed.
+create function public.record_thumbnail(
+  p_game_id uuid,
+  p_source_url text,
+  p_webp_url text,
+  p_avif_url text,
+  p_error text
+)
+returns boolean
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_changed boolean := false;
+begin
+  if p_error is null then
+    insert into public.game_thumbnails as t
+      (game_id, source_url, webp_url, avif_url, last_error, last_attempt_at, failure_count)
+    values (p_game_id, p_source_url, p_webp_url, p_avif_url, null, now(), 0)
+    on conflict (game_id) do update set
+      source_url = excluded.source_url,
+      webp_url = excluded.webp_url,
+      avif_url = excluded.avif_url,
+      last_error = null,
+      last_attempt_at = now(),
+      failure_count = 0;
+
+    update public.games set thumbnail_url = p_webp_url
+    where id = p_game_id and thumbnail_url = p_source_url;
+    v_changed := found;
+  else
+    insert into public.game_thumbnails as t
+      (game_id, source_url, webp_url, avif_url, last_error, last_attempt_at, failure_count)
+    values (p_game_id, p_source_url, null, null, left(p_error, 500), now(), 1)
+    on conflict (game_id) do update set
+      failure_count = case when t.source_url = excluded.source_url then t.failure_count + 1 else 1 end,
+      webp_url = case when t.source_url = excluded.source_url then t.webp_url else null end,
+      avif_url = case when t.source_url = excluded.source_url then t.avif_url else null end,
+      source_url = excluded.source_url,
+      last_error = excluded.last_error,
+      last_attempt_at = now();
+  end if;
+
+  return v_changed;
+end;
+$$;
+
+revoke execute on function public.record_thumbnail(uuid, text, text, text, text) from public, anon, authenticated;
+grant execute on function public.record_thumbnail(uuid, text, text, text, text) to service_role;
+
+notify pgrst, 'reload schema';
+
+===== apps/admin/src/app/(dashboard)/games/page.tsx =====
+import type { Metadata } from "next";
+import { requireAdmin } from "@/lib/auth";
+import { setPublished } from "@/lib/games-actions";
+import { createSecretClient } from "@/lib/supabase/secret";
+
+export const metadata: Metadata = { title: "Games" };
+
+// A game is flagged after this many failed embed checks in a row (the worker counts them).
+const FLAGGED_AFTER = 3;
+
+type Health = {
+  last_ok: boolean;
+  last_checked_at: string;
+  last_error: string | null;
+  consecutive_failures: number;
+};
+
+type GameRow = {
+  id: string;
+  slug: string;
+  title: string;
+  provider: string;
+  is_published: boolean;
+  categories: { name: string } | null;
+  game_health: Health | Health[] | null;
+};
+
+function healthOf(game: GameRow): Health | null {
+  return Array.isArray(game.game_health) ? (game.game_health[0] ?? null) : game.game_health;
+}
+
+function HealthLabel({ health }: { health: Health | null }) {
+  if (!health) return <span className="text-sm text-muted">Embed not checked yet</span>;
+
+  const when = new Date(health.last_checked_at).toLocaleDateString("en-GB");
+  if (health.last_ok) return <span className="text-sm text-muted">Embed OK ({when})</span>;
+
+  const flagged = health.consecutive_failures >= FLAGGED_AFTER;
+  return (
+    <span className="text-sm text-danger">
+      {flagged ? "Flagged: " : "Failing: "}
+      {health.consecutive_failures} failed checks in a row
+      {health.last_error ? ` (${health.last_error})` : ""}
+    </span>
+  );
+}
+
+export default async function GamesPage() {
+  await requireAdmin();
+
+  const { data, error } = await createSecretClient()
+    .from("games")
+    .select(
+      "id, slug, title, provider, is_published, categories(name), game_health(last_ok, last_checked_at, last_error, consecutive_failures)",
+    )
+    .order("title")
+    .order("id")
+    .limit(500);
+
+  if (error) throw new Error(`games list failed: ${error.message}`);
+  const games = (data ?? []) as unknown as GameRow[];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">Games ({games.length})</h1>
+
+      <ul className="flex flex-col gap-2">
+        {games.map((game) => (
+          <li
+            key={game.id}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4"
+          >
+            <div className="flex flex-col">
+              <span className="font-semibold">{game.title}</span>
+              <span className="text-sm text-muted">
+                {game.slug} &middot; {game.categories?.name ?? "no category"} &middot;{" "}
+                {game.provider}
+              </span>
+              <HealthLabel health={healthOf(game)} />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className={"text-sm " + (game.is_published ? "" : "text-danger")}>
+                {game.is_published ? "Live" : "Hidden"}
+              </span>
+              <form action={setPublished}>
+                <input type="hidden" name="gameId" value={game.id} />
+                <input
+                  type="hidden"
+                  name="published"
+                  value={game.is_published ? "false" : "true"}
+                />
+                <button
+                  type="submit"
+                  className="rounded-lg border border-border px-3 py-1.5 text-sm hover:border-brand"
+                >
+                  {game.is_published ? "Unpublish" : "Publish"}
+                </button>
+              </form>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+

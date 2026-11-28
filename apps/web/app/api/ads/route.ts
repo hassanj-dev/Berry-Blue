@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 
 // Only the columns the popup needs. The database policy already hides ads that are off or outside their dates.
 const CORE =
@@ -7,6 +7,7 @@ const CORE =
 const COLUMNS = `${CORE}, repeat_days, repeat_hours, weight, rotation`;
 
 export async function GET() {
+  await connection();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
   const key =
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

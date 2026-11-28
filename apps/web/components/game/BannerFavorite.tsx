@@ -17,7 +17,7 @@ export function BannerFavorite({ slug }: { slug: string }) {
       title={t("favorites.action")}
       onClick={() => toggleFavorite(slug)}
       className={cn(
-        "flex size-9 cursor-pointer items-center justify-center rounded-full backdrop-blur transition-colors lg:size-10",
+        "flex size-9 cursor-pointer items-center justify-center rounded-lg backdrop-blur transition-colors lg:size-10",
         saved ? "bg-primary text-primary-foreground" : "bg-white/15 text-white hover:bg-white/25",
       )}
     >

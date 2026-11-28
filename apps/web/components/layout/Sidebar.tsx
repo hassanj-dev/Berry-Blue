@@ -10,7 +10,7 @@ import { sidebarNav } from "@/lib/nav";
 
 // NavLink sets aria-current="page" on the active item.
 const itemClass =
-  "flex h-9 shrink-0 [@media(max-height:760px)]:h-8 items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted transition-colors hover:bg-foreground/10 hover:text-foreground aria-[current=page]:bg-primary aria-[current=page]:text-primary-foreground";
+  "flex h-9 shrink-0 [@media(max-height:760px)]:h-8 items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted transition-colors hover:bg-foreground/10 hover:text-foreground aria-[current=page]:bg-primary aria-[current=page]:text-primary-foreground";
 
 async function SidebarCategories() {
   const categories = await getCategories();

@@ -1,2 +1,4 @@
-// Runs in <head> before React. Dark is the default. Only an explicit "light" choice switches it.
-export const themeInitScript = `(function(){try{var t=localStorage.getItem("theme");document.documentElement.dataset.theme=t==="light"?"light":"dark"}catch(e){document.documentElement.dataset.theme="dark"}})();`;
+export const THEME_STORAGE_KEY = "theme";
+
+// Runs before React starts, so the saved theme is on <html> for the first paint.
+export const themeInitScript = `(function(){try{var t=localStorage.getItem("${THEME_STORAGE_KEY}");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t;}}catch(e){}})();`;

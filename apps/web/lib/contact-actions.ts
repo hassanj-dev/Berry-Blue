@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { headers } from "next/headers";
 import { z } from "zod";
 
 export type ContactState = { ok: boolean; error?: string };
@@ -11,6 +12,31 @@ const schema = z.object({
   message: z.string().trim().min(5).max(4000),
 });
 
+// At most 5 messages per hour from one address. The list lives in server memory, so it
+// resets on a restart and is per server instance: it slows spam down, it does not stop a
+// determined bot. Add Cloudflare Turnstile if spam still gets through.
+const WINDOW_MS = 60 * 60 * 1000;
+const MAX_PER_WINDOW = 5;
+const hits = new Map<string, number[]>();
+
+async function tooManyRequests(): Promise<boolean> {
+  const h = await headers();
+  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
+  const now = Date.now();
+  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
+  if (recent.length >= MAX_PER_WINDOW) {
+    hits.set(ip, recent);
+    return true;
+  }
+  hits.set(ip, [...recent, now]);
+  if (hits.size > 5000) {
+    for (const [key, times] of hits) {
+      if (times.every((t) => now - t >= WINDOW_MS)) hits.delete(key);
+    }
+  }
+  return false;
+}
+
 export async function sendContact(_: ContactState, form: FormData): Promise<ContactState> {
   if (form.get("website")) return { ok: true }; // honeypot: bots fill this
   const parsed = schema.safeParse({
@@ -19,6 +45,10 @@ export async function sendContact(_: ContactState, form: FormData): Promise<Cont
     message: form.get("message"),
   });
   if (!parsed.success) return { ok: false, error: "Please fill in all fields with a valid email." };
+
+  if (await tooManyRequests()) {
+    return { ok: false, error: "Too many messages. Please try again in an hour." };
+  }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
   const key =

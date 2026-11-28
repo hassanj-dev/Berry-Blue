@@ -84,7 +84,7 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
     <section
       aria-roledescription="carousel"
       aria-label={t("home.slider.label")}
-      className="relative isolate touch-pan-y overflow-hidden rounded-3xl bg-surface"
+      className="relative isolate touch-pan-y overflow-hidden rounded-2xl bg-surface"
       // Only a real mouse pauses on hover. On a phone a tap would leave the slideshow stuck.
       onPointerEnter={(event) => {
         if (event.pointerType === "mouse") setHovered(true);
@@ -162,7 +162,7 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
                 <div className="flex items-center gap-2">
                   <Link
                     href={slide.href}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary-hover lg:h-10 lg:px-6 lg:text-sm"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary-hover lg:h-10 lg:px-6 lg:text-sm"
                   >
                     <Play size={14} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />
                     {t("game.playNow")}

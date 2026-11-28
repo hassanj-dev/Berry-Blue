@@ -76,3 +76,9 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", {
 export function formatPostDate(iso: string): string {
   return dateFormat.format(new Date(iso));
 }
+
+/** Whole minutes to read, at about 200 words a minute. Never less than 1. */
+export function readingMinutes(content: string): number {
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(words / 200));
+}

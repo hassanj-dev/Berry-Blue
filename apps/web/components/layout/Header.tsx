@@ -1,3 +1,5 @@
+import { Shuffle } from "lucide-react";
+import Link from "next/link";
 import { Suspense } from "react";
 import { LowInternetToggle } from "@/components/layout/LowInternetToggle";
 import { Logo } from "@/components/layout/Logo";
@@ -17,6 +19,17 @@ export function Header() {
 
         <div className="order-2 ml-auto flex items-center lg:order-3">
           <LowInternetToggle />
+          {/* prefetch off: /random answers with a different game each time. */}
+          <Link
+            href="/random"
+            prefetch={false}
+            rel="nofollow"
+            aria-label="Play a random game"
+            title="Random game"
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:text-foreground"
+          >
+            <Shuffle size={20} strokeWidth={1.5} aria-hidden="true" />
+          </Link>
           <ThemeToggle />
         </div>
 

@@ -3,6 +3,7 @@ import { FaDiscord, FaInstagram, FaLinkedinIn, FaTiktok, FaYoutube } from "react
 import { t } from "@/i18n";
 import { Logo } from "@/components/layout/Logo";
 import { siteConfig } from "@/lib/site";
+import { socialLinks } from "@/lib/social";
 
 // An empty href means the page does not exist yet: the name is shown without a link.
 const columns = [
@@ -34,23 +35,23 @@ const columns = [
   {
     title: "footer.legal",
     items: [
-      { label: "footer.privacyPolicy", href: "/privacy" },
-      { label: "footer.termsOfService", href: "/terms" },
+      { label: "footer.privacyPolicy", href: "/privacy-policy" },
+      { label: "footer.termsOfService", href: "/terms-of-service" },
     ],
   },
 ] as const;
 
-// Add the real profile address to turn an icon into a link.
+// Profile addresses are in lib/social.ts. A network with no address there is not shown.
 const social = [
-  { name: "LinkedIn", Glyph: FaLinkedinIn, url: "" },
-  { name: "Instagram", Glyph: FaInstagram, url: "" },
-  { name: "TikTok", Glyph: FaTiktok, url: "" },
-  { name: "Discord", Glyph: FaDiscord, url: "" },
-  { name: "YouTube", Glyph: FaYoutube, url: "" },
-];
+  { name: "LinkedIn", Glyph: FaLinkedinIn, url: socialLinks.linkedin },
+  { name: "Instagram", Glyph: FaInstagram, url: socialLinks.instagram },
+  { name: "TikTok", Glyph: FaTiktok, url: socialLinks.tiktok },
+  { name: "Discord", Glyph: FaDiscord, url: socialLinks.discord },
+  { name: "YouTube", Glyph: FaYoutube, url: socialLinks.youtube },
+].filter((item) => item.url !== "");
 
 const iconClass =
-  "flex size-10 items-center justify-center rounded-xl bg-foreground/10 transition hover:-translate-y-0.5 hover:bg-primary hover:text-white";
+  "flex size-10 items-center justify-center rounded-lg bg-foreground/10 transition hover:-translate-y-0.5 hover:bg-primary hover:text-white";
 
 export function Footer() {
   return (

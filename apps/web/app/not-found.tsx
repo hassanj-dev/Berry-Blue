@@ -85,7 +85,6 @@ export default function NotFound() {
           Error 404
         </span>
         <p
-          style={{ color: "#0000ff" }}
           aria-hidden="true"
           className={digitsFont.className + " text-6xl leading-none text-brand md:text-7xl"}
         >
@@ -98,7 +97,7 @@ export default function NotFound() {
         <Truck />
         <Link
           href="/"
-          className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+          className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
         >
           <Home size={16} strokeWidth={1.5} aria-hidden="true" />
           Back to Home

@@ -48,7 +48,7 @@ function inline(text: string, key: string): ReactNode[] {
             key={k}
             href={href}
             {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-            className="text-primary underline underline-offset-2"
+            className="text-foreground underline decoration-border-strong underline-offset-4 transition-colors hover:decoration-foreground"
           >
             {inline(match[3], k)}
           </a>
@@ -75,10 +75,10 @@ function inline(text: string, key: string): ReactNode[] {
 
 const headingClass = [
   "",
-  "mt-10 mb-3 text-3xl font-bold",
-  "mt-10 mb-3 text-2xl font-bold",
-  "mt-8 mb-2 text-xl font-semibold",
-  "mt-6 mb-2 text-lg font-semibold",
+  "mt-12 mb-4 text-2xl font-semibold leading-tight tracking-tight",
+  "mt-8 mb-3 text-xl font-semibold leading-snug tracking-tight",
+  "mt-5 mb-2 text-base font-semibold",
+  "mt-5 mb-2 text-base font-semibold",
 ];
 
 export function Markdown({ source }: { source: string }) {
@@ -144,7 +144,7 @@ export function Markdown({ source }: { source: string }) {
       while (i < lines.length && /^>\s?/.test(lines[i]))
         quote.push(lines[i++].replace(/^>\s?/, ""));
       blocks.push(
-        <blockquote key={key} className="my-5 border-l-4 border-border pl-4 text-muted">
+        <blockquote key={key} className="my-5 border-l-2 border-border-strong pl-4 text-muted">
           {inline(quote.join(" "), key)}
         </blockquote>,
       );
@@ -162,7 +162,7 @@ export function Markdown({ source }: { source: string }) {
       blocks.push(
         <Tag
           key={key}
-          className={`my-4 flex flex-col gap-1.5 pl-6 ${ordered ? "list-decimal" : "list-disc"}`}
+          className={`my-4 flex flex-col gap-2 pl-6 ${ordered ? "list-decimal" : "list-disc"}`}
         >
           {items.map((item, j) => (
             <li key={j}>{inline(item, `${key}-${j}`)}</li>

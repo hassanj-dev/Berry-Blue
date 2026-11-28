@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight, Shuffle } from "lucide-react";
 import { iconProps } from "@/components/game/icon-style";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -15,22 +15,65 @@ import { GameReport } from "@/components/game/GameReport";
 import { GameDesktopNotice, GameQr, ShareButton } from "@/components/game/GameShare";
 import { GameVotes } from "@/components/game/GameVotes";
 import { t } from "@/i18n";
-import { getGameBySlug, getRelatedGames } from "@/lib/games";
+import { JsonLd } from "@/components/site/JsonLd";
+import { getGameBySlug, getRelatedGames, type Game } from "@/lib/games";
+import { siteConfig } from "@/lib/site";
+
+// Structured data for search engines: tells them this page is a free game that is played in the browser.
+// No star rating on purpose: likes and dislikes are not a star rating, and search engines dislike a made-up one.
+function gameJsonLd(game: Game): Record<string, unknown> {
+  const genre = game.categorySlug
+    ? game.categorySlug.charAt(0).toUpperCase() + game.categorySlug.slice(1)
+    : undefined;
+
+  let image: string | undefined;
+  try {
+    image = new URL(game.thumbnailUrl, siteConfig.url).toString();
+  } catch {
+    image = undefined;
+  }
+
+  const published = game.createdAt ? new Date(game.createdAt) : null;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    name: game.title,
+    url: siteConfig.url + "/game/" + game.slug,
+    applicationCategory: "Game",
+    gamePlatform: "Web browser",
+    operatingSystem: "Any",
+    isAccessibleForFree: true,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    ...(game.description ? { description: game.description } : {}),
+    ...(image ? { image } : {}),
+    ...(genre ? { genre } : {}),
+    ...(game.tags.length > 0 ? { keywords: game.tags.join(", ") } : {}),
+    ...(published && !Number.isNaN(published.getTime())
+      ? { datePublished: published.toISOString() }
+      : {}),
+    ...(game.provider ? { publisher: { "@type": "Organization", name: game.provider } } : {}),
+  };
+}
 
 type Params = Promise<{ slug: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
-  const game = await getGameBySlug(slug);
 
-  if (!game) return { title: t("game.notFound") };
+  try {
+    const game = await getGameBySlug(slug);
+    if (!game) return { title: t("game.notFound") };
 
-  return {
-    title: game.metaTitle || game.title,
-    description: game.metaDescription || game.description || undefined,
-  };
+    return {
+      title: game.metaTitle || game.title,
+      description: game.metaDescription || game.description || undefined,
+      alternates: { canonical: "/game/" + game.slug },
+    };
+  } catch {
+    return { title: "BerryBlue" };
+  }
 }
-
 // The page itself asks for no data, it only adds Suspense. The data is read inside GameContent.
 export default function GamePage({ params }: { params: Params }) {
   return (
@@ -55,6 +98,7 @@ async function GameContent({ params }: { params: Params }) {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-8 md:gap-10">
+      <JsonLd data={gameJsonLd(game)} />
       <div className="flex items-start gap-3 md:-mb-5">
         <Link
           href="/games"
@@ -156,14 +200,26 @@ async function GameContent({ params }: { params: Params }) {
             <h2 id="related-heading" className="text-lg font-[600]">
               {t("game.related")}
             </h2>
-            {/* Phone only: desktop keeps its current layout. */}
-            <Link
-              href={"/category/" + game.categorySlug}
-              className="-mr-2 inline-flex items-center gap-0.5 rounded-full px-2 py-1 text-sm text-brand transition-colors hover:underline sm:hidden"
-            >
-              {t("game.seeAll")}
-              <ChevronRight size={16} strokeWidth={1.5} aria-hidden="true" />
-            </Link>
+            <div className="-mr-2 flex items-center gap-1">
+              {/* prefetch off: /random answers with a different game each time. */}
+              <Link
+                href={"/random?from=" + game.slug}
+                prefetch={false}
+                rel="nofollow"
+                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-brand transition-colors hover:underline"
+              >
+                <Shuffle size={16} strokeWidth={1.5} aria-hidden="true" />
+                Random game
+              </Link>
+              {/* Phone only: desktop keeps its current layout. */}
+              <Link
+                href={"/category/" + game.categorySlug}
+                className="inline-flex items-center gap-0.5 rounded-lg px-2 py-1 text-sm text-brand transition-colors hover:underline sm:hidden"
+              >
+                {t("game.seeAll")}
+                <ChevronRight size={16} strokeWidth={1.5} aria-hidden="true" />
+              </Link>
+            </div>
           </div>
           <ul className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:gap-4 md:grid-cols-3 md:gap-5 xl:grid-cols-4 xl:gap-6">
             {related.map((item) => (
@@ -184,8 +240,8 @@ function GamePageSkeleton() {
       <div className="flex items-start gap-3">
         <div className="size-10 shrink-0 rounded-full bg-border sm:size-11" />
         <div className="flex flex-col gap-2">
-          <div className="h-8 w-48 rounded bg-border" />
-          <div className="h-4 w-24 rounded bg-border" />
+          <div className="h-8 w-48 rounded-lg bg-border" />
+          <div className="h-4 w-24 rounded-lg bg-border" />
         </div>
       </div>
       <div className="aspect-video w-full rounded-2xl bg-border" />

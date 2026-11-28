@@ -74,7 +74,7 @@ export default function DesignSystemPage() {
         <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
           {swatches.map((s) => (
             <div key={s.name}>
-              <div className={"h-16 rounded-xl border border-border " + s.className} />
+              <div className={"h-16 rounded-lg border border-border " + s.className} />
               <p className="mt-1 text-xs text-muted">{s.name}</p>
             </div>
           ))}

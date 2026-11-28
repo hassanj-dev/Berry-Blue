@@ -1,24 +1,28 @@
 import type { Metadata } from "next";
-import { Container } from "@/components/site/Container";
 import { StaticPage } from "@/components/layout/StaticPage";
-import { t } from "@/i18n";
-import { DRAFT_NOTICE, LAST_UPDATED, privacy } from "@/lib/static-pages";
+import { siteConfig } from "@/lib/site";
+import { privacy } from "@/lib/static-pages";
 
 export const metadata: Metadata = {
-  title: t("footer.privacy"),
+  title: privacy.title,
+  description: `What information ${siteConfig.name} collects, how it is used, and the choices available to you.`,
   alternates: { canonical: "/privacy-policy" },
 };
 
 export default function PrivacyPolicyPage() {
   return (
-    <Container size="content" className="py-12 md:py-16">
-      <StaticPage
-        title={t("footer.privacy")}
-        intro={privacy.intro}
-        draftNotice={DRAFT_NOTICE}
-        updated={LAST_UPDATED}
-        sections={privacy.sections}
-      />
-    </Container>
+    <StaticPage
+      page={privacy}
+      meta={[
+        { label: "Effective date", value: privacy.effective },
+        { label: "Last updated", value: privacy.updated ?? privacy.effective },
+        { label: "Sections", value: String(privacy.sections.length) },
+        {
+          label: "Contact",
+          value: siteConfig.privacyEmail,
+          href: `mailto:${siteConfig.privacyEmail}`,
+        },
+      ]}
+    />
   );
 }

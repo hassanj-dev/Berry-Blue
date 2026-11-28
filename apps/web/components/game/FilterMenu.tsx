@@ -41,8 +41,8 @@ export function FilterMenu({
       <summary
         className={
           plain
-            ? "flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-full pl-1 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden"
-            : "flex h-10 cursor-pointer list-none items-center gap-1.5 rounded-full bg-foreground/10 px-4 text-sm font-medium capitalize max-sm:gap-1 max-sm:px-3 max-sm:text-xs hover:bg-foreground/20 [&::-webkit-details-marker]:hidden"
+            ? "flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-lg pl-1 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden"
+            : "flex h-10 cursor-pointer list-none items-center gap-1.5 rounded-lg bg-foreground/10 px-4 text-sm font-medium capitalize max-sm:gap-1 max-sm:px-3 max-sm:text-xs hover:bg-foreground/20 [&::-webkit-details-marker]:hidden"
         }
       >
         {plain ? <ArrowUpDown size={16} strokeWidth={1.5} aria-hidden="true" /> : null}

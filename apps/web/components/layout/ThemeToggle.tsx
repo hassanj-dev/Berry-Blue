@@ -35,7 +35,7 @@ export function ThemeToggle() {
       aria-label={t("theme.label")}
       title={t("theme.title")}
       onClick={toggle}
-      className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:text-foreground"
+      className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:text-foreground"
     >
       <Icon name={light ? "moon" : "sun"} />
     </button>

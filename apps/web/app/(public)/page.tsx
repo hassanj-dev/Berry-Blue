@@ -34,7 +34,7 @@ export default function HomePage() {
         <GameShelf shelf="new" />
       </Suspense>
       <Suspense fallback={<GameShelfSkeleton />}>
-        <GameShelf shelf="popular" />
+        <GameShelf shelf="popular" limit={10} ranked title="Top 10 most played" />
       </Suspense>
     </main>
   );

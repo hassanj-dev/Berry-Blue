@@ -26,7 +26,7 @@ export function MenuShell({ label, children }: { label: string; children: ReactN
     <details ref={ref} className="group order-1 lg:hidden">
       <summary
         aria-label={label}
-        className="flex size-10 cursor-pointer list-none items-center justify-center rounded-full hover:bg-foreground/10 [&::-webkit-details-marker]:hidden"
+        className="flex size-10 cursor-pointer list-none items-center justify-center rounded-lg hover:bg-foreground/10 [&::-webkit-details-marker]:hidden"
       >
         <Menu size={22} aria-hidden="true" className="group-open:hidden" />
         <X size={22} aria-hidden="true" className="hidden group-open:block" />

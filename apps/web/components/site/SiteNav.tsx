@@ -3,8 +3,9 @@
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { btn, cx, focusRing } from "./ui";
+import { useRef, useState } from "react";
+import { ThemeToggle } from "./ThemeToggle";
+import { btn, cx, focusRing, gutter, iconProps } from "./ui";
 
 const links = [
   { href: "/guides", label: "Guides" },
@@ -24,12 +25,16 @@ export function SiteNav() {
   // without a state-setting effect.
   const [openFor, setOpenFor] = useState<string | null>(null);
   const open = openFor === pathname;
+  const toggleRef = useRef<HTMLButtonElement>(null);
 
   return (
     <div
       className="flex items-center gap-2"
       onKeyDown={(event) => {
-        if (event.key === "Escape") setOpenFor(null);
+        if (event.key === "Escape" && open) {
+          setOpenFor(null);
+          toggleRef.current?.focus();
+        }
       }}
     >
       <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
@@ -41,7 +46,7 @@ export function SiteNav() {
               href={href}
               aria-current={active ? "page" : undefined}
               className={cx(
-                "rounded-lg px-3 py-2 text-sm transition-colors hover:text-foreground",
+                "flex h-9 items-center rounded-lg px-3 text-sm transition-colors hover:text-foreground",
                 active ? "bg-foreground/5 text-foreground" : "text-muted",
                 focusRing,
               )}
@@ -52,11 +57,14 @@ export function SiteNav() {
         })}
       </nav>
 
+      <ThemeToggle />
+
       <Link href="/games" className={cx(btn("primary", "sm"), "hidden md:inline-flex")}>
         Browse games
       </Link>
 
       <button
+        ref={toggleRef}
         type="button"
         aria-expanded={open}
         aria-controls="site-menu"
@@ -67,19 +75,18 @@ export function SiteNav() {
           focusRing,
         )}
       >
-        {open ? (
-          <X size={20} strokeWidth={1.5} aria-hidden="true" />
-        ) : (
-          <Menu size={20} strokeWidth={1.5} aria-hidden="true" />
-        )}
+        {open ? <X {...iconProps} /> : <Menu {...iconProps} />}
       </button>
 
       {open && (
         <div
           id="site-menu"
-          className="absolute inset-x-0 top-full border-b border-border bg-background md:hidden"
+          className="rise-in absolute inset-x-0 top-full border-b border-border bg-background md:hidden"
         >
-          <nav aria-label="Mobile" className="mx-auto flex max-w-6xl flex-col gap-1 p-4">
+          <nav
+            aria-label="Mobile"
+            className={cx("mx-auto flex max-w-7xl flex-col gap-1 py-4", gutter)}
+          >
             {links.map(({ href, label }) => {
               const active = isActive(pathname, href);
               return (

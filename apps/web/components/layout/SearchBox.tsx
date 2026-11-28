@@ -141,7 +141,7 @@ export function SearchBox() {
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
-        className="h-10 w-full rounded-xl border border-border bg-surface pl-11 pr-4 text-sm transition-colors placeholder:text-muted hover:bg-foreground/5 focus:border-border-strong focus:bg-foreground/5 focus-visible:outline-none! md:h-11"
+        className="h-10 w-full rounded-lg border border-border bg-surface pl-11 pr-4 text-sm transition-colors placeholder:text-muted hover:bg-foreground/5 focus:border-border-strong focus:bg-foreground/5 md:h-11"
       />
 
       {visible ? (
@@ -149,7 +149,7 @@ export function SearchBox() {
           id={listId}
           role="listbox"
           aria-label={t("search.suggestions")}
-          className="absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-lg"
+          className="absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-border bg-surface py-1 shadow-lg"
         >
           {items.map((item, index) => (
             <li

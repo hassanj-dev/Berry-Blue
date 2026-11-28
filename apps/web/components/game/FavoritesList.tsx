@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { GameCard, GameCardSkeleton, type GameCardData } from "@/components/game/GameCard";
 import { Icon } from "@/components/layout/icons";
 import { t } from "@/i18n";
@@ -26,24 +26,27 @@ function ListSkeleton() {
   );
 }
 
-function Empty() {
+function Empty({ suggestions }: { suggestions?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface px-6 py-14 text-center">
-      <span className="flex size-12 items-center justify-center rounded-full bg-foreground/5 text-muted">
-        <Icon name="heart" size={22} />
-      </span>
-      <p className="max-w-xs text-muted">{t("favorites.empty")}</p>
-      <Link
-        href="/games"
-        className="mt-1 inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
-      >
-        {t("favorites.browse")}
-      </Link>
+    <div className="flex flex-col gap-10">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface px-6 py-14 text-center">
+        <span className="flex size-12 items-center justify-center rounded-full bg-foreground/5 text-muted">
+          <Icon name="heart" size={22} />
+        </span>
+        <p className="max-w-xs text-muted">{t("favorites.empty")}</p>
+        <Link
+          href="/games"
+          className="mt-1 inline-flex h-10 items-center rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+        >
+          {t("favorites.browse")}
+        </Link>
+      </div>
+      {suggestions}
     </div>
   );
 }
 
-export function FavoritesList() {
+export function FavoritesList({ suggestions }: { suggestions?: ReactNode }) {
   // false on the server and while hydrating, so "no favorites" never flashes before localStorage is read.
   const mounted = useSyncExternalStore(
     subscribeNothing,
@@ -78,13 +81,13 @@ export function FavoritesList() {
   }
 
   if (!mounted) return <ListSkeleton />;
-  if (slugs.length === 0) return <Empty />;
+  if (slugs.length === 0) return <Empty suggestions={suggestions} />;
   if (status === "failed") return <p className="text-muted">{t("favorites.error")}</p>;
   if (status === "loading") return <ListSkeleton />;
 
   // A game removed with the heart disappears at once, before any new request finishes.
   const shown = games.filter((game) => slugs.includes(game.slug));
-  if (shown.length === 0) return <Empty />;
+  if (shown.length === 0) return <Empty suggestions={suggestions} />;
 
   return (
     <div className="flex flex-col gap-4">
@@ -95,7 +98,7 @@ export function FavoritesList() {
         <button
           type="button"
           onClick={clearAll}
-          className="cursor-pointer rounded-full border border-border px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:border-border-strong hover:text-foreground"
+          className="cursor-pointer rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:border-border-strong hover:text-foreground"
         >
           {t("favorites.clearAll")}
         </button>

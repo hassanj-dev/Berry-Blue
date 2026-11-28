@@ -63,7 +63,7 @@ export function GameReport({ gameId }: { gameId: string }) {
       {open && status === "sent" && (
         <p
           role="status"
-          className="absolute right-0 top-full z-50 mt-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm shadow-xl"
+          className="absolute right-0 top-full z-50 mt-2 rounded-lg border border-border bg-surface px-4 py-3 text-sm shadow-xl"
         >
           {t("game.reportSent")}
         </p>
@@ -84,7 +84,7 @@ export function GameReport({ gameId }: { gameId: string }) {
               type="button"
               onClick={() => setOpen(false)}
               aria-label={t("common.close")}
-              className="flex size-8 cursor-pointer items-center justify-center rounded-full text-muted hover:text-foreground"
+              className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-muted hover:text-foreground"
             >
               <X {...iconProps} aria-hidden="true" />
             </button>
@@ -136,7 +136,7 @@ export function GameReport({ gameId }: { gameId: string }) {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="h-10 cursor-pointer rounded-full px-4 text-muted hover:text-foreground"
+                className="h-10 cursor-pointer rounded-lg px-4 text-muted hover:text-foreground"
               >
                 {t("game.reportCancel")}
               </button>
@@ -144,7 +144,7 @@ export function GameReport({ gameId }: { gameId: string }) {
                 type="button"
                 onClick={send}
                 disabled={pending}
-                className="h-10 cursor-pointer rounded-full bg-primary px-5 font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+                className="h-10 cursor-pointer rounded-lg bg-primary px-5 font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
               >
                 {t("game.reportSend")}
               </button>

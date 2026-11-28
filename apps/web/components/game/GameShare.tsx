@@ -123,13 +123,13 @@ function useQrPopup() {
         onClick={() => dialogRef.current?.close()}
         aria-label={t("common.close")}
         title={t("common.close")}
-        className="absolute right-2 top-2 flex size-9 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:text-foreground"
+        className="absolute right-2 top-2 flex size-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:text-foreground"
       >
         <X {...iconProps} aria-hidden="true" />
       </button>
 
       <div className="flex flex-col items-center gap-4 p-6 pt-10 text-center">
-        <div className="size-36 overflow-hidden rounded-xl bg-white">
+        <div className="size-36 overflow-hidden rounded-lg bg-white">
           {qr ? (
             // A data URL cannot go through next/image, so a plain img is correct here.
             // eslint-disable-next-line @next/next/no-img-element
@@ -181,14 +181,14 @@ export function GameDesktopNotice() {
   return (
     <div
       role="note"
-      className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border-strong bg-surface px-4 py-3 text-sm"
+      className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border-strong bg-surface px-4 py-3 text-sm"
     >
       <Smartphone {...iconProps} className="shrink-0 text-muted" aria-hidden="true" />
       <p className="min-w-0 flex-1">{t("game.touchOnlyNotice")}</p>
       <button
         type="button"
         onClick={openPopup}
-        className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-full bg-primary px-4 font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+        className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
       >
         <QrCode size={16} strokeWidth={1.5} aria-hidden="true" />
         {t("game.playOnPhone")}

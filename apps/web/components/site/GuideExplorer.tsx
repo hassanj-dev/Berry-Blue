@@ -7,7 +7,7 @@ import { EmptyState } from "./EmptyState";
 import { Keycap } from "./Keycap";
 import { matchesQuery } from "./search";
 import { SearchField } from "./SearchField";
-import { btn, cx, focusRing, surfaceCard } from "./ui";
+import { btn, cx, focusRing, iconInline, metaText, surfaceCard } from "./ui";
 
 export type GuideStep = { title: string; body: string };
 export type GuideItem = {
@@ -37,8 +37,8 @@ export function GuideExplorer({ guides }: { guides: GuideItem[] }) {
   );
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="max-w-xl">
+    <div className="flex flex-col gap-8">
+      <div className="flex max-w-xl flex-col gap-3">
         <SearchField
           id={`${uid}-search`}
           label="Search guides"
@@ -46,19 +46,18 @@ export function GuideExplorer({ guides }: { guides: GuideItem[] }) {
           value={query}
           onChange={setQuery}
         />
+        <p role="status" aria-live="polite" className={metaText}>
+          {searching
+            ? `${visible.length} of ${guides.length} guides`
+            : `${guides.length} ${guides.length === 1 ? "guide" : "guides"}`}
+        </p>
       </div>
-
-      <p role="status" aria-live="polite" className="text-sm text-muted">
-        {searching
-          ? `${visible.length} of ${guides.length} guides`
-          : `${guides.length} ${guides.length === 1 ? "guide" : "guides"}`}
-      </p>
 
       {visible.length === 0 ? (
         <EmptyState
           icon={BookOpen}
           title="No matching guides"
-          description="Try different words, or clear the search to see every guide."
+          description="Try different words, or clear the search to see every guide"
         >
           <button type="button" onClick={() => setQuery("")} className={btn("secondary", "sm")}>
             Clear search
@@ -80,7 +79,7 @@ export function GuideExplorer({ guides }: { guides: GuideItem[] }) {
                   )}
                 >
                   <div className="flex flex-col gap-2">
-                    <h2 className="text-lg font-semibold leading-snug">{guide.title}</h2>
+                    <h3 className="text-lg font-semibold leading-snug">{guide.title}</h3>
                     {guide.summary && (
                       <p className="line-clamp-3 text-sm text-muted">{guide.summary}</p>
                     )}
@@ -101,11 +100,11 @@ export function GuideExplorer({ guides }: { guides: GuideItem[] }) {
                   )}
 
                   <span className="mt-auto flex items-center justify-between pt-1 text-sm">
-                    <span className="text-muted tabular-nums">
+                    <span className={metaText}>
                       {guide.steps.length} {guide.steps.length === 1 ? "step" : "steps"}
                     </span>
                     <span className="inline-flex items-center gap-1 font-medium">
-                      Read guide <ArrowRight size={16} strokeWidth={1.5} aria-hidden="true" />
+                      Read guide <ArrowRight {...iconInline} />
                     </span>
                   </span>
                 </Link>

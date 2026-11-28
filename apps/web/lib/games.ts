@@ -209,14 +209,10 @@ export async function getGamesPage(
 }
 // ---------- One game ----------
 
-// null = nahi mila. Database error par throw (error page), taake masla cache na ho.
-export async function getGameBySlug(slug: string): Promise<Game | null> {
+async function loadGameBySlug(slug: string): Promise<Game | null> {
   "use cache";
   cacheLife({ stale: 30, revalidate: 60, expire: 3600 });
   cacheTag("games");
-
-  // URL se aane wali value par bharosa nahi: ghalat slug par database tak jaana hi nahi.
-  if (!SLUG_PATTERN.test(slug)) return null;
 
   const supabase = createPublicClient();
 
@@ -237,6 +233,12 @@ export async function getGameBySlug(slug: string): Promise<Game | null> {
   }
 
   return result.data;
+}
+
+// null = nahi mila. Database error par throw hota hai (error page), 404 nahi.
+export async function getGameBySlug(slug: string): Promise<Game | null> {
+  if (!SLUG_PATTERN.test(slug)) return null;
+  return loadGameBySlug(slug);
 }
 
 // ---------- Related games ----------
@@ -306,6 +308,45 @@ export async function getRelatedGames(game: Game, limit = 4): Promise<Game[]> {
     console.error(error);
     return [];
   }
+}
+
+// ---------- Random game ----------
+
+async function loadPublishedSlugs(): Promise<string[]> {
+  "use cache";
+  cacheLife({ stale: 300, revalidate: 3600, expire: 86400 });
+  cacheTag("games");
+
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("games")
+    .select("slug")
+    .eq("is_published", true)
+    .order("id");
+
+  if (error) throw new Error(`getPublishedSlugs failed: ${error.message}`);
+
+  return (data ?? [])
+    .map((row: { slug?: unknown }) => String(row.slug ?? ""))
+    .filter((slug) => SLUG_PATTERN.test(slug));
+}
+
+async function getPublishedSlugs(): Promise<string[]> {
+  try {
+    return await loadPublishedSlugs();
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+// A random published game, or null when there are none. excludeSlug: the game the visitor is on now.
+export async function getRandomSlug(excludeSlug?: string): Promise<string | null> {
+  const slugs = await getPublishedSlugs();
+  const pool = slugs.length > 1 ? slugs.filter((slug) => slug !== excludeSlug) : slugs;
+  if (pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)] ?? null;
 }
 
 // ---------- Categories ----------

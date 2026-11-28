@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { cacheLife, cacheTag } from "next/cache";
+import { faqs as approvedFaqs } from "@/lib/static-pages";
 
 export type Faq = { id: string; question: string; answer: string };
 export type GuideStep = { title: string; body: string };
@@ -19,19 +20,24 @@ function client() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+/**
+ * Questions saved in the database win. When the table is empty or cannot be
+ * reached, the approved questions from lib/static-pages.ts are shown instead,
+ * so the page is never blank.
+ */
 export async function getFaqs(): Promise<Faq[]> {
   "use cache";
   cacheLife("minutes");
   cacheTag("faqs");
   const db = client();
-  if (!db) return [];
+  if (!db) return approvedFaqs;
   const { data, error } = await db
     .from("faqs")
     .select("id, question, answer")
     .order("sort_order")
     .order("created_at");
   if (error) console.error("faqs failed:", error.message);
-  return (data ?? []) as Faq[];
+  return data && data.length > 0 ? (data as Faq[]) : approvedFaqs;
 }
 
 export async function getGuides(): Promise<Guide[]> {

@@ -13,7 +13,7 @@ export function SortTabs({ current, filters }: { current: SortName; filters: Gam
               href={gamesHref({ ...filters, sort })}
               aria-current={sort === current ? "true" : undefined}
               className={cn(
-                "inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-medium",
+                "inline-flex min-h-11 items-center rounded-lg border border-border px-4 text-sm font-medium",
                 sort === current ? "bg-brand text-brand-foreground" : "bg-surface text-foreground",
               )}
             >

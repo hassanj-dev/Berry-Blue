@@ -1,7 +1,7 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { cx, focusRing, iconProps } from "./ui";
+import { cx, focusRing, iconInline, iconProps } from "./ui";
 
 export function SearchField({
   id,
@@ -33,7 +33,7 @@ export function SearchField({
         placeholder={placeholder}
         autoComplete="off"
         className={cx(
-          "h-12 w-full rounded-lg border border-border bg-surface pl-12 pr-12 text-sm text-foreground placeholder:text-muted",
+          "h-12 w-full rounded-lg border border-border bg-surface pl-12 pr-12 text-base text-foreground placeholder:text-subtle sm:text-sm",
           "transition-colors hover:border-foreground/30 [&::-webkit-search-cancel-button]:appearance-none",
           focusRing,
         )}
@@ -48,7 +48,7 @@ export function SearchField({
             focusRing,
           )}
         >
-          <X size={16} strokeWidth={1.5} aria-hidden="true" />
+          <X {...iconInline} />
         </button>
       )}
     </div>

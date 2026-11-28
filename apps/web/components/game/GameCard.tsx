@@ -18,14 +18,22 @@ export type GameCardData = Pick<
 type GameCardProps = {
   game: GameCardData;
   priority?: boolean;
+  // How wide the card is on each screen. The browser uses it to download the right image size.
+  sizes?: string;
+  // 1, 2, 3...: a number badge for ranked lists such as the Top 10.
+  rank?: number;
 };
 
 const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
 
+// Cards in the normal grid: 2 columns on phones (about 44% of the screen), 3 from 768px, 4 from 1280px.
+const CARD_SIZES =
+  "(min-width: 1280px) 19vw, (min-width: 1024px) 25vw, (min-width: 768px) 30vw, 46vw";
+
 // The whole card is one link (the ::after on the title). Title and category sit on the art.
 // A mouse on desktop also sees the plays and the likes (.card-preview in globals.css).
 // The description, tags and devices are on the game page.
-export function GameCard({ game, priority = false }: GameCardProps) {
+export function GameCard({ game, priority = false, sizes = CARD_SIZES, rank }: GameCardProps) {
   const hasStats = game.playCount !== undefined && game.likeCount !== undefined;
 
   return (
@@ -34,12 +42,20 @@ export function GameCard({ game, priority = false }: GameCardProps) {
         src={game.thumbnailUrl}
         alt=""
         fill
-        sizes="(min-width: 1280px) 50vw, (min-width: 1024px) 62vw, 175vw"
+        sizes={sizes}
         priority={priority}
         className="card-thumb object-cover"
         style={{ objectPosition: `${game.thumbFocusX ?? 50}% 50%` }}
       />
       <ThumbBlock title={game.title} className="absolute inset-0 text-5xl" />
+      {rank ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute left-2 top-2 z-10 flex size-8 items-center justify-center rounded-lg bg-black/60 text-sm font-semibold tabular-nums text-white backdrop-blur"
+        >
+          {rank}
+        </span>
+      ) : null}
       <FavoriteButton slug={game.slug} title={game.title} />
       {hasStats ? (
         <div

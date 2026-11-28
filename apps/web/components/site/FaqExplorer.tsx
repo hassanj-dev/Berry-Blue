@@ -1,14 +1,17 @@
 "use client";
 
-import { ChevronDown, Search } from "lucide-react";
+import { Minus, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { EmptyState } from "./EmptyState";
+import { RichText } from "./RichText";
 import { matchesQuery } from "./search";
 import { SearchField } from "./SearchField";
-import { btn, cx, focusRingInset } from "./ui";
+import { btn, cx, focusRing, iconProps, metaText } from "./ui";
 
 export type FaqItem = { id: string | number; question: string; answer: string };
+
+const ROW = "grid grid-cols-[2rem_1fr_1.5rem] gap-x-3 sm:grid-cols-[3rem_1fr_1.5rem] sm:gap-x-4";
 
 /**
  * Searchable accordion. Each question is a real <button> with aria-expanded and
@@ -18,11 +21,15 @@ export type FaqItem = { id: string | number; question: string; answer: string };
 export function FaqExplorer({ faqs }: { faqs: FaqItem[] }) {
   const uid = useId();
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
+  const [open, setOpen] = useState<ReadonlySet<string>>(
+    () => new Set(faqs[0] ? [String(faqs[0].id)] : []),
+  );
   const triggers = useRef<Array<HTMLButtonElement | null>>([]);
 
   const searching = query.trim().length > 0;
-  const visible = faqs.filter((faq) => matchesQuery(`${faq.question} ${faq.answer}`, query));
+  const visible = faqs
+    .map((faq, index) => ({ faq, number: index + 1 }))
+    .filter(({ faq }) => matchesQuery(`${faq.question} ${faq.answer}`, query));
 
   function toggle(key: string) {
     setOpen((previous) => {
@@ -46,28 +53,29 @@ export function FaqExplorer({ faqs }: { faqs: FaqItem[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <SearchField
-        id={`${uid}-search`}
-        label="Search questions"
-        placeholder="Search questions"
-        value={query}
-        onChange={setQuery}
-      />
-
-      <p role="status" aria-live="polite" className="text-sm text-muted">
-        {searching
-          ? `${visible.length} of ${faqs.length} questions`
-          : `${faqs.length} ${faqs.length === 1 ? "question" : "questions"}`}
-      </p>
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-3">
+        <SearchField
+          id={`${uid}-search`}
+          label="Search questions"
+          placeholder="Search questions"
+          value={query}
+          onChange={setQuery}
+        />
+        <p role="status" aria-live="polite" className={metaText}>
+          {searching
+            ? `${visible.length} of ${faqs.length} questions`
+            : `${faqs.length} ${faqs.length === 1 ? "question" : "questions"}`}
+        </p>
+      </div>
 
       {visible.length === 0 ? (
         <EmptyState
           icon={Search}
           title="No matching questions"
-          description="Try different words, or send us your question."
+          description="Try different words, or send us your question"
         >
-          <div className="flex flex-wrap justify-center gap-3">
+          <div className="flex flex-wrap gap-3">
             <button type="button" onClick={() => setQuery("")} className={btn("secondary", "sm")}>
               Clear search
             </button>
@@ -77,14 +85,14 @@ export function FaqExplorer({ faqs }: { faqs: FaqItem[] }) {
           </div>
         </EmptyState>
       ) : (
-        <ul className="flex flex-col gap-3">
-          {visible.map((faq, index) => {
+        <ul className="border-t border-border">
+          {visible.map(({ faq, number }, index) => {
             const key = String(faq.id);
             const isOpen = open.has(key);
             const buttonId = `${uid}-q-${key}`;
             const panelId = `${uid}-a-${key}`;
             return (
-              <li key={key} className="overflow-hidden rounded-2xl border border-border bg-surface">
+              <li key={key} className="border-b border-border">
                 <h2>
                   <button
                     type="button"
@@ -97,35 +105,30 @@ export function FaqExplorer({ faqs }: { faqs: FaqItem[] }) {
                     onClick={() => toggle(key)}
                     onKeyDown={(event) => onTriggerKeyDown(event, index)}
                     className={cx(
-                      "flex w-full items-center justify-between gap-4 p-5 text-left font-medium transition-colors hover:bg-foreground/5",
-                      focusRingInset,
+                      ROW,
+                      "group w-full items-baseline rounded-sm py-5 text-left",
+                      focusRing,
                     )}
                   >
-                    <span>{faq.question}</span>
-                    <ChevronDown
-                      size={20}
-                      strokeWidth={1.5}
-                      aria-hidden="true"
-                      className={cx(
-                        "shrink-0 text-muted transition-transform duration-200 motion-reduce:transition-none",
-                        isOpen && "rotate-180",
-                      )}
-                    />
+                    <span aria-hidden="true" className={metaText}>
+                      {String(number).padStart(2, "0")}
+                    </span>
+                    <span className="text-pretty text-lg font-medium">{faq.question}</span>
+                    <span className="self-center text-muted transition-colors group-hover:text-foreground">
+                      {isOpen ? <Minus {...iconProps} /> : <Plus {...iconProps} />}
+                    </span>
                   </button>
                 </h2>
                 <div
                   id={panelId}
-                  inert={!isOpen}
-                  className={cx(
-                    "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
-                    isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-                  )}
+                  role="region"
+                  aria-labelledby={buttonId}
+                  hidden={!isOpen}
+                  className={cx(ROW, "rise-in pb-6")}
                 >
-                  <div className="overflow-hidden">
-                    <p className="whitespace-pre-line px-5 pb-5 leading-relaxed text-muted">
-                      {faq.answer}
-                    </p>
-                  </div>
+                  <p className="col-start-2 max-w-2xl whitespace-pre-line text-pretty leading-relaxed text-muted">
+                    <RichText text={faq.answer} />
+                  </p>
                 </div>
               </li>
             );

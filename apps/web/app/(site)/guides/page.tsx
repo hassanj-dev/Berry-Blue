@@ -1,68 +1,152 @@
-import { BookOpen } from "lucide-react";
+import { ArrowDown } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { Container } from "@/components/site/Container";
-import { EmptyState } from "@/components/site/EmptyState";
+import { ControlDeck } from "@/components/site/ControlDeck";
 import { GuideExplorer } from "@/components/site/GuideExplorer";
+import { Keycap } from "@/components/site/Keycap";
 import { PageHero } from "@/components/site/PageHero";
-import { btn, cx } from "@/components/site/ui";
+import { RichText } from "@/components/site/RichText";
+import { SectionHeading } from "@/components/site/SectionHeading";
+import { cx, focusRing, h2Class, iconInline, surfaceCard } from "@/components/site/ui";
 import { getGuides } from "@/lib/content";
+import { gameGuide, type GuideBlock, type GuideSection } from "@/lib/guide-content";
 
 export const metadata: Metadata = {
-  title: "Game Guides",
-  description: "Step-by-step help to get the most out of your games.",
+  title: "Game guides",
+  description: gameGuide.intro,
   alternates: { canonical: "/guides" },
 };
 
 export default function GuidesPage() {
   return (
     <>
-      <PageHero
-        eyebrow="Guides"
-        title="Game guides"
-        description="Step-by-step help to get the most out of your games."
-      />
-      <Container className="py-12 md:py-16">
-        <Suspense fallback={<GuidesSkeleton />}>
-          <GuidesContent />
-        </Suspense>
-      </Container>
+      <PageHero title={gameGuide.title} description={gameGuide.intro} aside={<GuideIndex />} />
+      <div>
+        {gameGuide.sections.map((section) => (
+          <GuideSectionView key={section.id} section={section} />
+        ))}
+      </div>
+      <Suspense fallback={null}>
+        <MoreGuides />
+      </Suspense>
     </>
   );
 }
 
-async function GuidesContent() {
-  const guides = await getGuides();
+function GuideIndex() {
+  return (
+    <nav aria-label="Guide sections">
+      <ol className="border-b border-border">
+        {gameGuide.sections.map((section) => (
+          <li key={section.id} className="border-t border-border">
+            <a
+              href={`#${section.id}`}
+              className={cx(
+                "group flex h-12 items-center justify-between gap-4 rounded-sm text-muted transition-colors hover:text-foreground",
+                focusRing,
+              )}
+            >
+              <span>{section.title}</span>
+              <ArrowDown
+                {...iconInline}
+                className="shrink-0 text-subtle transition-colors group-hover:text-foreground"
+              />
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
 
-  if (guides.length === 0) {
+function GuideSectionView({ section }: { section: GuideSection }) {
+  const headingId = `${section.id}-title`;
+  return (
+    <section id={section.id} aria-labelledby={headingId} className="scroll-mt-16">
+      <Container className="grid gap-6 py-8 md:py-10 lg:grid-cols-12 lg:gap-10">
+        <h2 id={headingId} className={cx(h2Class, "lg:col-span-4")}>
+          {section.title}
+        </h2>
+        <div className="flex flex-col gap-6 lg:col-span-8">
+          {section.blocks.map((block, index) => (
+            <GuideBlockView
+              key={index}
+              block={block}
+              visual={block.type === "list" ? section.visual : undefined}
+            />
+          ))}
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+function GuideBlockView({ block, visual }: { block: GuideBlock; visual?: "controls" }) {
+  if (block.type === "paragraph") {
     return (
-      <EmptyState
-        icon={BookOpen}
-        title="No guides yet"
-        description="Guides will appear here as soon as they are published."
-      >
-        <Link href="/games" className={btn("secondary", "sm")}>
-          Browse games
-        </Link>
-      </EmptyState>
+      <p className="max-w-2xl text-pretty text-base leading-relaxed text-muted sm:text-[1.0625rem]">
+        <RichText text={block.text} keys />
+      </p>
     );
   }
 
-  return <GuideExplorer guides={guides} />;
+  if (block.type === "steps") {
+    return (
+      <ol className="border-b border-border">
+        {block.items.map((item, index) => (
+          <li key={item} className="flex items-start gap-5 border-t border-border py-5">
+            <Keycap>{index + 1}</Keycap>
+            <p className="max-w-2xl text-pretty pt-1 text-base leading-relaxed sm:text-[1.0625rem]">
+              <RichText text={item} keys />
+            </p>
+          </li>
+        ))}
+      </ol>
+    );
+  }
+
+  if (block.type === "list") {
+    return (
+      <>
+        {visual === "controls" && <ControlDeck />}
+        <ul className="border-b border-border">
+          {block.items.map((item) => (
+            <li
+              key={item.label}
+              className="text-pretty border-t border-border py-4 leading-relaxed text-muted"
+            >
+              <span className="font-medium text-foreground">{item.label}:</span>{" "}
+              <RichText text={item.text} />
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  }
+
+  return (
+    <p className={cx("text-pretty p-5 leading-relaxed text-muted", surfaceCard)}>
+      <RichText text={block.text} />
+    </p>
+  );
 }
 
-function GuidesSkeleton() {
-  const block = "animate-pulse rounded-2xl bg-foreground/5 motion-reduce:animate-none";
+/** Guides saved in the database. Renders nothing when there are none. */
+async function MoreGuides() {
+  const guides = await getGuides();
+  if (guides.length === 0) return null;
+
   return (
-    <div role="status" className="flex flex-col gap-6">
-      <span className="sr-only">Loading guides</span>
-      <div className={cx("h-12 w-full max-w-xl rounded-lg", block)} />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className={cx("h-64", block)} />
-        ))}
-      </div>
-    </div>
+    <section aria-labelledby="more-guides">
+      <Container className="flex flex-col gap-8 py-8 md:py-10">
+        <SectionHeading
+          id="more-guides"
+          title="More guides"
+          description="Step-by-step help to get the most out of your games"
+        />
+        <GuideExplorer guides={guides} />
+      </Container>
+    </section>
   );
 }

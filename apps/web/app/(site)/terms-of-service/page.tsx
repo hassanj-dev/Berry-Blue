@@ -1,24 +1,28 @@
 import type { Metadata } from "next";
-import { Container } from "@/components/site/Container";
 import { StaticPage } from "@/components/layout/StaticPage";
-import { t } from "@/i18n";
-import { DRAFT_NOTICE, LAST_UPDATED, terms } from "@/lib/static-pages";
+import { siteConfig } from "@/lib/site";
+import { terms } from "@/lib/static-pages";
 
 export const metadata: Metadata = {
-  title: t("footer.terms"),
+  title: terms.title,
+  description: `The terms that apply when you use ${siteConfig.name}.`,
   alternates: { canonical: "/terms-of-service" },
 };
 
 export default function TermsOfServicePage() {
   return (
-    <Container size="content" className="py-12 md:py-16">
-      <StaticPage
-        title={t("footer.terms")}
-        intro={terms.intro}
-        draftNotice={DRAFT_NOTICE}
-        updated={LAST_UPDATED}
-        sections={terms.sections}
-      />
-    </Container>
+    <StaticPage
+      page={terms}
+      meta={[
+        { label: "Effective date", value: terms.effective },
+        { label: "Last updated", value: terms.updated ?? terms.effective },
+        { label: "Sections", value: String(terms.sections.length) },
+        {
+          label: "Contact",
+          value: siteConfig.contactEmail,
+          href: `mailto:${siteConfig.contactEmail}`,
+        },
+      ]}
+    />
   );
 }

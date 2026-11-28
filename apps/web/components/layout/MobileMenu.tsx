@@ -9,7 +9,7 @@ import { getCategories } from "@/lib/games";
 import { footerNav, sidebarNav } from "@/lib/nav";
 
 const itemClass =
-  "flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium hover:bg-foreground/10 aria-[current=page]:bg-primary aria-[current=page]:text-primary-foreground";
+  "flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium hover:bg-foreground/10 aria-[current=page]:bg-primary aria-[current=page]:text-primary-foreground";
 
 // Phone and tablet navigation. Desktop uses the sidebar.
 export async function MobileMenu() {

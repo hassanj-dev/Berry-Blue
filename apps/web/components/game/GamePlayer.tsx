@@ -135,7 +135,7 @@ export function GamePlayer({
               <button
                 type="button"
                 onClick={handlePlay}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-8 py-4 text-lg font-medium text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-white/10 transition-[transform,background-color,box-shadow] duration-150 hover:bg-primary-hover hover:shadow-primary/40 active:scale-[0.97] max-sm:px-5 max-sm:py-2.5 max-sm:text-[15px] motion-reduce:transition-none motion-reduce:active:scale-100"
+                className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-8 py-4 text-lg font-medium text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-white/10 transition-[transform,background-color,box-shadow] duration-150 hover:bg-primary-hover hover:shadow-primary/40 active:scale-[0.97] max-sm:px-5 max-sm:py-2.5 max-sm:text-[15px] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
                 <Play size={20} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />
                 {t("game.playNow")}
@@ -151,7 +151,7 @@ export function GamePlayer({
             onClick={toggleFullscreen}
             aria-label={fullscreenLabel}
             title={fullscreenLabel}
-            className="absolute bottom-3 right-3 z-10 flex size-10 cursor-pointer items-center justify-center rounded-full bg-black/75 text-white transition-colors hover:bg-black/90 max-sm:hidden"
+            className="absolute bottom-3 right-3 z-10 flex size-10 cursor-pointer items-center justify-center rounded-lg bg-black/75 text-white transition-colors hover:bg-black/90 max-sm:hidden"
           >
             <Maximize {...iconProps} aria-hidden="true" />
           </button>
@@ -164,7 +164,7 @@ export function GamePlayer({
             onClick={toggleFullscreen}
             aria-label={t("game.exitFullscreen")}
             title={t("game.exitFullscreen")}
-            className="absolute right-3 top-3 z-10 flex size-11 cursor-pointer items-center justify-center rounded-full bg-black/75 text-white transition-colors hover:bg-black/90"
+            className="absolute right-3 top-3 z-10 flex size-11 cursor-pointer items-center justify-center rounded-lg bg-black/75 text-white transition-colors hover:bg-black/90"
           >
             <Minimize {...iconProps} aria-hidden="true" />
           </button>

@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { SiteFooter } from "@/components/site/SiteFooter";
+import { Footer } from "@/components/layout/Footer";
 import { SiteHeader } from "@/components/site/SiteHeader";
 
 /**
  * Layout for the standalone public pages. Deliberately has no Sidebar and no
- * AdsHost: each page is a full-width document with a minimal header and footer.
+ * AdsHost: each page is a full-width document with a minimal header and the
+ * site's own Footer.
  */
 export default function SiteLayout({ children }: { children: ReactNode }) {
   return (
@@ -19,7 +20,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
       <main id="main" className="flex-1">
         {children}
       </main>
-      <SiteFooter />
+      <Footer />
     </div>
   );
 }

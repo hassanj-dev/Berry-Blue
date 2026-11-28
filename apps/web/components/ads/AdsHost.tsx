@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { pickAd } from "./pick";
 
 type Ad = {
@@ -168,23 +168,24 @@ export function AdsHost() {
   return <AdView key={ad.id} ad={ad} onClose={close} />;
 }
 
-// Animations for the close ring and the progress bar (shared by both ad types).
+// Animation for the progress line (shared by both ad types).
 const AD_CSS = `
-@keyframes ad-ring { from { stroke-dashoffset: 0 } to { stroke-dashoffset: 138.23 } }
 @keyframes ad-bar { from { transform: scaleX(1) } to { transform: scaleX(0) } }
 @media (prefers-reduced-motion: reduce) { .ad-anim { animation: none !important } }
 `;
 
 const SPRING = "ease-[cubic-bezier(0.34,1.56,0.64,1)]";
 
-function Countdown({ endsAt }: { endsAt: string }) {
-  const [now, setNow] = useState<number | null>(null);
+function subscribeToSecond(onTick: () => void) {
+  const id = window.setInterval(onTick, 1000);
+  return () => window.clearInterval(id);
+}
 
-  useEffect(() => {
-    setNow(Date.now());
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
+const readSecond = (): number | null => Math.floor(Date.now() / 1000) * 1000;
+const readSecondOnServer = (): number | null => null;
+
+function Countdown({ endsAt }: { endsAt: string }) {
+  const now = useSyncExternalStore(subscribeToSecond, readSecond, readSecondOnServer);
 
   if (now === null) return null;
   const left = new Date(endsAt).getTime() - now;
@@ -211,51 +212,45 @@ function Countdown({ endsAt }: { endsAt: string }) {
   );
 }
 
-// Round close button with a thin ring that empties while the ad waits to close by itself.
-function CloseButton({ seconds, onClose }: { seconds: number; onClose: () => void }) {
+// Popup chrome, placed inside the (relative, overflow-hidden) ad box:
+// X at the top right, small black "AD" tag at the bottom left, and a loading line
+// along the bottom edge that empties while the ad waits to close by itself.
+function PopupChrome({
+  seconds,
+  onClose,
+  barClass,
+}: {
+  seconds: number;
+  onClose: () => void;
+  barClass: string;
+}) {
   return (
-    <button
-      type="button"
-      aria-label="Close ad"
-      onClick={onClose}
-      className="group relative flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-neutral-900/80 text-white shadow-lg ring-1 ring-white/25 transition duration-200 hover:bg-neutral-900 hover:ring-white/50 active:scale-90"
-    >
+    <>
+      <button
+        type="button"
+        aria-label="Close ad"
+        onClick={onClose}
+        className="absolute right-2 top-2 z-10 flex size-8 cursor-pointer items-center justify-center rounded-full bg-black/65 text-white ring-1 ring-white/25 transition hover:bg-black/85 active:scale-90"
+      >
+        <X size={16} strokeWidth={2.5} aria-hidden="true" />
+      </button>
+
+      <span className="pointer-events-none absolute bottom-2.5 left-2 z-10 rounded bg-black px-1.5 py-[3px] text-[9px] font-semibold leading-none tracking-wider text-white">
+        AD
+      </span>
+
       {seconds > 0 && (
-        <svg
-          className="absolute -inset-[3px] size-[calc(100%+6px)] -rotate-90"
-          viewBox="0 0 48 48"
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[3px] bg-black/30"
           aria-hidden="true"
         >
-          <circle
-            cx="24"
-            cy="24"
-            r="22"
-            fill="none"
-            stroke="white"
-            strokeOpacity="0.18"
-            strokeWidth="1.5"
+          <div
+            className={`ad-anim h-full w-full origin-left ${barClass}`}
+            style={{ animation: `ad-bar ${seconds}s linear forwards` }}
           />
-          <circle
-            cx="24"
-            cy="24"
-            r="22"
-            fill="none"
-            stroke="white"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeDasharray="138.23"
-            className="ad-anim"
-            style={{ animation: `ad-ring ${seconds}s linear forwards` }}
-          />
-        </svg>
+        </div>
       )}
-      <X
-        size={18}
-        strokeWidth={2}
-        aria-hidden="true"
-        className="transition-transform duration-200 group-hover:rotate-90"
-      />
-    </button>
+    </>
   );
 }
 
@@ -294,7 +289,7 @@ function AdView({ ad, onClose }: { ad: Ad; onClose: () => void }) {
         onClick={(event) => {
           if (event.target === event.currentTarget) onClose();
         }}
-        className={`fixed inset-0 z-[70] flex flex-col items-center justify-center gap-3 bg-black/45 p-4 backdrop-blur-sm transition-opacity duration-300 ${entered ? "opacity-100" : "opacity-0"}`}
+        className={`fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm transition-opacity duration-300 ${entered ? "opacity-100" : "opacity-0"}`}
       >
         <style>{AD_CSS}</style>
 
@@ -302,19 +297,22 @@ function AdView({ ad, onClose }: { ad: Ad; onClose: () => void }) {
           className={`relative transition duration-500 ${SPRING} ${entered ? "translate-y-0 scale-100 opacity-100" : "translate-y-6 scale-90 opacity-0"}`}
         >
           {imageMode ? (
-            // Full design: shown exactly as uploaded. No clipping box and no shadow on the link,
-            // so a transparent PNG has no frame or dark outline around the cut-out shape.
-            <a {...linkProps} className="block overflow-hidden rounded-2xl">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={ad.image_url ?? ""}
-                alt={alt}
-                draggable={false}
-                className="block h-auto max-h-[72dvh] w-auto max-w-[min(36rem,calc(100vw-2rem))] rounded-2xl"
-              />
-            </a>
+            // Full design: the image is shown as uploaded, with the X, AD tag and loading line on top.
+            // Note: for a transparent PNG these sit on the edges of the image box, not its cut-out shape.
+            <div className="relative overflow-hidden rounded-2xl">
+              <a {...linkProps} className="block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={ad.image_url ?? ""}
+                  alt={alt}
+                  draggable={false}
+                  className="block h-auto max-h-[72dvh] w-auto max-w-[min(36rem,calc(100vw-2rem))]"
+                />
+              </a>
+              <PopupChrome seconds={ad.auto_close} onClose={onClose} barClass="bg-primary" />
+            </div>
           ) : (
-            <div className="w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-[28px] bg-surface p-2 shadow-2xl ring-1 ring-white/10">
+            <div className="relative w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-[28px] bg-surface p-2 shadow-2xl ring-1 ring-white/10">
               {ad.image_url && (
                 <div className="relative overflow-hidden rounded-3xl">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -325,9 +323,13 @@ function AdView({ ad, onClose }: { ad: Ad; onClose: () => void }) {
                   />
                 </div>
               )}
-              <div className="flex flex-col gap-3 px-3 pb-3 pt-4">
+              <div className="flex flex-col gap-3 px-3 pb-9 pt-4">
                 {ad.title && (
-                  <p className="text-2xl font-extrabold leading-tight tracking-tight">{ad.title}</p>
+                  <p
+                    className={`text-2xl font-extrabold leading-tight tracking-tight ${ad.image_url ? "" : "pr-8"}`}
+                  >
+                    {ad.title}
+                  </p>
                 )}
                 {ad.body && <p className="text-[15px] leading-snug text-muted">{ad.body}</p>}
                 {ad.show_countdown && ad.ends_at && <Countdown endsAt={ad.ends_at} />}
@@ -338,18 +340,9 @@ function AdView({ ad, onClose }: { ad: Ad; onClose: () => void }) {
                   {ad.button_text ?? "Open"}
                 </a>
               </div>
+              <PopupChrome seconds={ad.auto_close} onClose={onClose} barClass="bg-primary" />
             </div>
           )}
-        </div>
-
-        <span className="pointer-events-none -mt-1 text-[10px] font-medium uppercase tracking-[0.25em] text-white/60">
-          AD
-        </span>
-
-        <div
-          className={`transition duration-500 delay-100 ${entered ? "scale-100 opacity-100" : "scale-50 opacity-0"}`}
-        >
-          <CloseButton seconds={ad.auto_close} onClose={onClose} />
         </div>
       </div>
     );

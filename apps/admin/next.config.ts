@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Banner and thumbnail uploads are sent to a Server Action. The default limit is 1 MB.
+    serverActions: { bodySizeLimit: "6mb" },
+  },
   async headers() {
     return [
       {

@@ -104,7 +104,8 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
             </p>
           ) : (
             <p>
-              <strong>New game.</strong> It is not on the site yet.
+              <strong>New game.</strong> It is not on the site yet. After you approve it, it goes to
+              Games under Pending.
             </p>
           )}
         </div>

@@ -2,6 +2,7 @@ import { runImport, type ProviderAdapter } from "@berryblue/provider-core";
 import { createSelfHostedAdapter } from "@berryblue/provider-self-hosted";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSecretClient } from "./supabase";
+import { triggerAutoApprove } from "./auto-approve";
 import { createSupabaseStagingStore } from "./staging-store";
 
 // When a new provider is added, only one line is added here.
@@ -42,6 +43,9 @@ async function main() {
 
   console.log(`Import finished (batch ${result.batchId})`);
   console.table(result.stats);
+
+  // Games that pass the moderation rules go to Games > Pending by themselves.
+  await triggerAutoApprove();
 
   if (result.skipped.length > 0) {
     console.log("Skipped before staging:");

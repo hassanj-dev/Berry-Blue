@@ -17,14 +17,15 @@ export async function isAdminUser(userId: string): Promise<boolean> {
   return data !== null;
 }
 
-// getUser() verifies the token with Supabase Auth (never trust the cookie alone).
+// getClaims() checks the token signature locally (no network call). The admin_users lookup below
+// still runs on every request, so a removed admin is blocked immediately.
 const getAuth = cache(async () => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
 
-  if (!user) return { user: null, isAdmin: false };
+  if (!claims?.sub) return { user: null, isAdmin: false };
+  const user = { id: claims.sub, email: typeof claims.email === "string" ? claims.email : "" };
   return { user, isAdmin: await isAdminUser(user.id) };
 });
 

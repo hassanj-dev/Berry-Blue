@@ -20,12 +20,16 @@ export async function GET() {
   }
 
   const supabase = createClient(url, key, { auth: { persistSession: false } });
-  let { data, error } = await supabase.from("ads").select(COLUMNS).limit(50);
+  const full = await supabase.from("ads").select(COLUMNS).limit(50);
+  let data: unknown[] | null = full.data;
+  let error = full.error;
 
   // A new SQL file was not run yet: keep ads working with the basic columns instead of failing.
   if (error && /does not exist/i.test(error.message)) {
     console.warn("ads: run the newest SQL migration in Supabase. Using basic columns for now.");
-    ({ data, error } = await supabase.from("ads").select(CORE).limit(50));
+    const basic = await supabase.from("ads").select(CORE).limit(50);
+    data = basic.data;
+    error = basic.error;
   }
 
   if (error) {

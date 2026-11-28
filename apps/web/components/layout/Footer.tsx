@@ -18,9 +18,9 @@ const columns = [
   {
     title: "footer.resources",
     items: [
-      { label: "footer.faqs", href: "" },
-      { label: "footer.gameGuides", href: "" },
-      { label: "footer.blog", href: "" },
+      { label: "footer.faqs", href: "/faqs" },
+      { label: "footer.gameGuides", href: "/guides" },
+      { label: "footer.blog", href: "/blog" },
       { label: "footer.shop", href: "" },
     ],
   },

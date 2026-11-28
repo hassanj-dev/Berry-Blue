@@ -3,6 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getPublicEnv } from "@/lib/env";
 
 export async function proxy(request: NextRequest) {
+  // Worker ki call: login nahi hota, route khud secret check karta hai.
+  if (request.nextUrl.pathname === "/api/auto-approve") {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({ request });
   const { url, publishableKey } = getPublicEnv();
 
@@ -20,9 +25,8 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims ?? null;
 
   if (!user && request.nextUrl.pathname !== "/login") {
     const loginUrl = request.nextUrl.clone();

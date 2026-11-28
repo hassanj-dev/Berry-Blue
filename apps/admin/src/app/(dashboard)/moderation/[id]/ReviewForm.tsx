@@ -39,7 +39,10 @@ export function ReviewForm({
         onSubmit={submit(approveAction)}
         className="flex flex-col gap-4 rounded-2xl border border-border p-4"
       >
-        <h2 className="text-lg font-bold">Approve and publish</h2>
+        <h2 className="text-lg font-bold">Approve</h2>
+        <p className="text-sm text-muted">
+          A new game goes to Games, under Pending (hidden). Edit it there, then publish it.
+        </p>
         <input type="hidden" name="stagedId" value={stagedId} />
 
         <label className="flex flex-col gap-1 text-sm">
@@ -75,7 +78,7 @@ export function ReviewForm({
           disabled={!categoryId || busy}
           className="rounded-lg bg-brand px-4 py-2 font-semibold text-brand-foreground disabled:opacity-50"
         >
-          {approving ? "Publishing..." : "Approve and publish"}
+          {approving ? "Approving..." : "Approve"}
         </button>
         {!categoryId && (
           <p className="text-sm text-muted">Choose a category to enable this button.</p>
